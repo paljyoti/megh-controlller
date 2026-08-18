@@ -1,0 +1,117 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: techroute-postgres
+    restart: unless-stopped
+    ports:
+    - "5434:5432"
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - techroute-network
+
+  opensearch:
+    image: opensearchproject/opensearch:3
+    container_name: techroute-opensearch
+    restart: unless-stopped
+
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      DISABLE_SECURITY_PLUGIN: "true"
+
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+    ports:
+      - "9200:9200"
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+    networks:
+      - techroute-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    image: techroute-backend:latest
+    container_name: techroute-backend
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+
+    ports:
+      - "${BACKEND_PORT:-8082}:8082"
+
+
+
+    networks:
+      - techroute-network
+
+  frontend:
+    build:
+      context: ./megh-frontend
+      dockerfile: Dockerfile
+
+    image: techroute-frontend:latest
+    container_name: techroute-frontend
+
+    restart: unless-stopped
+
+
+
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+    networks:
+      - techroute-network
+
+volumes:
+  postgres-data:
+  opensearch-data:
+
+networks:
+  techroute-network:
+    driver: bridge

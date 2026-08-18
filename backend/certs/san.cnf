@@ -1,0 +1,18 @@
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+distinguished_name = dn
+req_extensions = req_ext
+
+[dn]
+CN = megh.techroutes.com
+
+[req_ext]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = megh.techroutes.com
+IP.1 = 172.16.0.23
+IP.2 = 122.160.82.93
+IP.3 = 127.0.0.1

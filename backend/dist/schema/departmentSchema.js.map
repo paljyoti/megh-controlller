@@ -1,0 +1,1 @@
+{"version":3,"file":"departmentSchema.js","sourceRoot":"","sources":["../../src/schema/departmentSchema.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,CAAC,EAAE,MAAM,KAAK,CAAC;AAIxB,MAAM,CAAC,MAAM,gBAAgB,GAAG,CAAC,CAAC,MAAM,CAAC;IACvC,EAAE,EAAE,CAAC,CAAC,MAAM,EAAE,CAAC,IAAI,EAAE;IACrB,IAAI,EAAE,CAAC,CAAC,MAAM,EAAE,CAAC,GAAG,CAAC,CAAC,EAAE,4BAA4B,CAAC;CACtD,CAAC,CAAC"}

@@ -1,0 +1,240 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  USER
+}
+
+model Organization {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  users       User[]
+  departments Department[]
+  devices     Device[]
+  createdAt   DateTime     @default(now())
+  updateAt    DateTime     @updatedAt
+}
+
+model Department {
+  id             String       @id @default(cuid())
+  name           String       @unique
+  organizationId String
+  organizations  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users          User[]
+  createdAt      DateTime     @default(now())
+  updateAt       DateTime     @updatedAt
+}
+
+model User {
+  id             String        @id @default(cuid())
+  name           String
+  email          String        @unique
+  password       String
+  role           Role          @default(USER)
+  organizationId String?
+  orgs           Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  departmentId String?
+  dept         Department? @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  devices Device[] @relation("UserDevices")
+
+  refreshToken String?
+
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+}
+
+// Switch / Device  
+
+model Device {
+  id              String        @id @default(cuid())
+  name            String
+  serialNumber    String        @unique
+  model           String
+  status          String        @default("unknown") // online | offline | rebooting | unknown
+  macAddress      String?
+  hardwareVersion String?
+  softwareVersion String?
+  ipAddress       String?
+  organizationId  String?
+  orgs            Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedToId    String?
+  assignedTo      User?         @relation("UserDevices", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  telemetry     Telemetry[]
+  vlans         Vlan[]
+  ports         Port[]
+  events        DeviceEvent[]
+  statusHistory DeviceStatus[]
+  commandLogs   CommandLog[]
+  alarms        Alarm[]
+
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+  Master    Master[]
+}
+
+//  Telemetry (system-level metrics)
+
+model Telemetry {
+  id              String          @id @default(uuid())
+  deviceId        String
+  device          Device          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  serialNumber    String
+  softwareVersion String          @db.Text
+  cpuUsage        String          @db.Text // stored as string for flexibility
+  memoryUsage     String          @db.Text // stored as string for flexibility
+  temperature     String          @db.Text // stored as string for flexibility
+  timestamp       String          @db.Text // unix epoch from device (as string)
+  interfaceStats  InterfaceStat[]
+  createdAt       DateTime        @default(now())
+  updateAt        DateTime        @updatedAt
+}
+
+model Master {
+  id              String          @id @default(uuid())
+  deviceId        String
+  device          Device          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  serialNumber    String          @unique
+  softwareVersion String          @db.Text
+  cpuUsage        String          @db.Text // stored as string for flexibility
+  memoryUsage     String          @db.Text // stored as string for flexibility
+  temperature     String          @db.Text // stored as string for flexibility
+  timestamp       String          @db.Text // unix epoch from device (as string)
+  interfaceStats  InterfaceStat[]
+  createdAt       DateTime        @default(now())
+  updateAt        DateTime        @updatedAt
+}
+
+//  Interface / Port Stats (per-port telemetry)
+
+model InterfaceStat {
+  id          String    @id @default(cuid())
+  telemetryId String
+  telemetry   Telemetry @relation(fields: [telemetryId], references: [id], onDelete: Cascade)
+  port        String    @db.Text // e.g. "gigabitEthernet0/5"
+  status      String    @db.Text // "up" | "down"
+  macAddress  String    @db.Text // required field
+  ipAddress   String?   @db.Text // optional, e.g. "172.16.0.139/24" for VLAN
+  rxBytes     String    @db.Text // stored as string
+  txBytes     String    @db.Text // stored as string
+  rxPackets   String    @db.Text // stored as string
+  txPackets   String    @db.Text // stored as string
+  createdAt   DateTime  @default(now())
+  Master      Master?   @relation(fields: [masterId], references: [id])
+  masterId    String?
+}
+
+// Device Events (port_up / port_down etc.)
+
+model DeviceEvent {
+  id        String   @id @default(cuid())
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  event     String // "port_up" | "port_down"
+  port      String? // e.g. "eth1"
+  timestamp BigInt // unix epoch from device
+  createdAt DateTime @default(now())
+}
+
+// Device Status (online / offline / rebooting)
+
+model DeviceStatus {
+  id              String   @id @default(cuid())
+  deviceId        String
+  device          Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  status          String // "online" | "offline" | "rebooting"
+  uptime          BigInt   @default(0)
+  softwareVersion String?
+  createdAt       DateTime @default(now())
+}
+
+// Command Log (request / response / file_transfer)
+
+model CommandLog {
+  id              String   @id @default(cuid())
+  deviceId        String
+  device          Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  requestId       String   @unique
+  command         String // command name or "file_transfer"
+  params          Json     @default("{}")
+  // Response fields (filled when switch responds)
+  responseStatus  Int? // 0=Success, 1=Invalid cmd, 2=Invalid params, 3=Failed, 4=Busy, 5=Internal error
+  responseMessage String?
+  responseData    Json?
+  // File transfer specific
+  fileType        String? // firmware | backup_configuration | restore_configuration | restore_certificate | restore_privateKey
+  fileUrl         String?
+  algorithm       String?
+  checksum        String?
+  version         String?
+  progress        String? // in-progress status / percentage
+  createdAt       DateTime @default(now())
+  updateAt        DateTime @updatedAt
+}
+
+model Vlan {
+  id        String   @id @default(cuid())
+  name      String
+  vlanId    Int
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+}
+
+model Port {
+  id          String   @id @default(cuid())
+  name        String // interface identifier, e.g. "gigabitEthernet0/1"
+  description String?
+  portType    String   @default("access") // "access" | "trunk"
+  vlanId      Int      @default(1) // access vlan, or native vlan when trunk
+  deviceId    String
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updateAt    DateTime @updatedAt
+
+  @@unique([deviceId, name])
+}
+
+// Alarms (event-driven and threshold-driven)
+
+model Alarm {
+  id             String    @id @default(cuid())
+  deviceId       String
+  device         Device    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  source         String // "event" | "threshold"
+  type           String // e.g. "port_down", "cpu_high", "memory_high", "temperature_high"
+  port           String? // set for port-level alarms, used to pair port_down/port_up
+  severity       String // "critical" | "warning" | "info"
+  message        String
+  status         String    @default("active") // "active" | "acknowledged" | "resolved"
+  triggeredAt    DateTime  @default(now())
+  resolvedAt     DateTime?
+  acknowledgedBy String?
+  createdAt      DateTime  @default(now())
+  updateAt       DateTime  @updatedAt
+}
+
+model audit {
+  id          String   @id @default(cuid())
+  action      String
+  performedBy String
+  entity      String
+  entityId    String
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updateAt    DateTime @updatedAt
+}

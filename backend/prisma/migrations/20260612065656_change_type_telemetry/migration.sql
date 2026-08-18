@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "public"."Telemetry" ALTER COLUMN "cpuUsage" SET DATA TYPE TEXT,
+ALTER COLUMN "memoryUsage" SET DATA TYPE TEXT,
+ALTER COLUMN "temperature" SET DATA TYPE TEXT,
+ALTER COLUMN "timestamp" SET DATA TYPE TEXT;
