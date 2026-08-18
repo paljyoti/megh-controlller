@@ -10,6 +10,7 @@ services:
       POSTGRES_USER: techroute_user
       POSTGRES_PASSWORD: changeme123
       POSTGRES_DB: techroute_db
+      DATABASE_URL: "postgresql://techroute_user:changeme123@postgres:5432/techroute_db?schema=public"
 
     volumes:
       - postgres-data:/var/lib/postgresql/data
