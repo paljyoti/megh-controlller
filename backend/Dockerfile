@@ -19,8 +19,14 @@ ENV NODE_ENV=production
 
 RUN addgroup -S app && adduser -S app -G app
 
-# install wget for healthcheck
-RUN apk add --no-cache wget
+# install wget for healthcheck (retry to handle transient DNS/APKINDEX failures)
+RUN set -eux; \
+		apk update || true; \
+		for i in 1 2 3 4 5; do \
+			apk add --no-cache wget && break || true; \
+			sleep 2; \
+		done; \
+		apk cache clean || true
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
