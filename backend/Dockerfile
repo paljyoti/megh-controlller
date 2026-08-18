@@ -8,7 +8,13 @@ RUN npm ci
 
 COPY . .
 
-RUN npx prisma generate
+RUN npm config set fetch-retries=5 && npm config set fetch-retry-mintimeout=2000 && npm config set fetch-retry-maxtimeout=120000
+RUN set -eux; \
+		for i in 1 2 3 4 5; do \
+			npx prisma generate && break || true; \
+			echo "prisma generate failed, retrying ($i)"; \
+			sleep 2; \
+		done
 RUN npm run build
 
 # runtime stage
