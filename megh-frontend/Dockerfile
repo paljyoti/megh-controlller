@@ -5,7 +5,8 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci
+# Ensure devDependencies (like TypeScript) are installed for the build
+RUN npm ci --include=dev
 
 COPY . .
 
