@@ -88,11 +88,6 @@ export const login = asyncHandlers(async (req, res) => {
 });
 export const register = asyncHandlers(async (req, res) => {
     const { name, email, password, deptId, orgsId, role } = req.body;
-    console.log(name);
-    console.log(deptId);
-    console.log(orgsId);
-    console.log(email);
-    console.log(password);
     if (!email || !password || !name) {
         throw new ApiError(400, "email, password and organisation is required");
     }
@@ -104,7 +99,9 @@ export const register = asyncHandlers(async (req, res) => {
     if (role == "ADMIN" && !orgsId) {
         throw new ApiError(401, "orgs is required for admin");
     }
-    console.log("got data", email, password, deptId, orgsId, role);
+    if (role === "SUPERADMIN" && req.user?.role !== "SUPERADMIN") {
+        throw new ApiError(403, "only a super admin can create another super admin");
+    }
     const existingUser = await client.user.findFirst({
         where: {
             email: email,
@@ -132,7 +129,6 @@ export const register = asyncHandlers(async (req, res) => {
             orgs: true,
         },
     });
-    console.log("created user", newUser);
     if (!newUser) {
         throw new ApiError(500, "error in user creation");
     }

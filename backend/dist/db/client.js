@@ -4,17 +4,7 @@ const basePrisma = globalForPrisma.prisma ??
     new PrismaClient({
     // log: ["query", "error", "warn"], // optional
     });
-export const prisma = process.env.NODE_ENV === "production"
-    ? basePrisma
-    : basePrisma.$extends({
-        query: {
-            async $allOperations({ model, operation, args, query }) {
-                const result = await query(args);
-                console.log(`prisma:result ${model}.${operation} ->`, result);
-                return result;
-            },
-        },
-    });
+export const prisma = basePrisma;
 if (process.env.NODE_ENV !== "production")
     globalForPrisma.prisma = basePrisma;
 export default prisma;

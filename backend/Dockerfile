@@ -47,4 +47,4 @@ EXPOSE 8082
 
 HEALTHCHECK --interval=30s --timeout=5s CMD wget -q --spider http://localhost:8082/health || exit 1
 
-CMD ["sh","-c","npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh","-c","npx prisma migrate deploy && npx prisma db seed && node dist/index.js"]
