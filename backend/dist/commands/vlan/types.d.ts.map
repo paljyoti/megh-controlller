@@ -1,0 +1,1 @@
+{"version":3,"file":"types.d.ts","sourceRoot":"","sources":["../../../src/commands/vlan/types.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,aAAa,CAAC;AAE/C,MAAM,WAAW,kBAAkB;IAGjC,MAAM,EAAE,CAAC,aAAa,EAAE,MAAM,GAAG,MAAM,KAAK,WAAW,CAAC;IACxD,MAAM,EAAE,CAAC,aAAa,EAAE,MAAM,GAAG,MAAM,KAAK,WAAW,CAAC;CACzD"}

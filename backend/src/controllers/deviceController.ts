@@ -14,6 +14,7 @@ import type {
   ChecksumAlgorithm,
 } from "../interfaces/mqttInterface.js";
 import type { newReq } from "../schema/types.js";
+import type { Prisma } from "@prisma/client";
 
 // Helper: find device by DB id OR serialNumber 
 const findDeviceById = async (id: string) => {
@@ -52,9 +53,12 @@ const verifyDeviceAccess = async (req: newReq, deviceId: string) => {
 export const getAllDevices = asyncHandlers(async (req: newReq, res: Response) => {
   if (!req.user) throw new ApiError(401, "unauthorized request");
 
-  let where = {};
+  // "My Devices" means already onboarded (assigned to an org) — unassigned devices belong in
+  // the Onboard list only (getUnassignedDevices below), never both. SUPERADMIN previously had no
+  // filter at all here, so an unassigned device (organizationId: null) showed up in both lists.
+  let where: Prisma.DeviceWhereInput = { organizationId: { not: null } };
   if (req.user.role === "ADMIN") {
-    where = { organizationId: req.user.orgs?.id };
+    where = { organizationId: req.user.orgs?.id ?? null };
   } else if (req.user.role === "USER") {
     where = { assignedToId: req.user.id };
   }
@@ -107,6 +111,22 @@ export const getEvents = asyncHandlers(async (req: newReq, res: Response) => {
   });
   const serialized = events.map((e) => ({ ...e, timestamp: e.timestamp.toString() }));
   return res.status(200).json(new ApiResponse(200, { events: serialized }, "Events fetched"));
+});
+
+// GET /api/v1/device/:id/command-logs
+// Every config command sent to this device (VLAN, Route, DHCP, Link Aggregation, Port,
+// PoE, System, L3) is logged to CommandLog by publishCommand/runDeviceCommand — this just
+// lists them, newest first, for the Device Log tab's audit trail.
+export const getCommandLogs = asyncHandlers(async (req: newReq, res: Response) => {
+  const device = await verifyDeviceAccess(req, getParam(req, "id"));
+
+  const limit = Number(req.query.limit) || 50;
+  const commandLogs = await prisma.commandLog.findMany({
+    where: { deviceId: device.id },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return res.status(200).json(new ApiResponse(200, { commandLogs }, "Command logs fetched"));
 });
 
 // GET /api/v1/device/:id/status

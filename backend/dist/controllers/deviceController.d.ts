@@ -2,6 +2,7 @@ import type { Response } from "express";
 export declare const getAllDevices: (req: any, res: Response, next: import("express").NextFunction) => void;
 export declare const getTelemetry: (req: any, res: Response, next: import("express").NextFunction) => void;
 export declare const getEvents: (req: any, res: Response, next: import("express").NextFunction) => void;
+export declare const getCommandLogs: (req: any, res: Response, next: import("express").NextFunction) => void;
 export declare const getStatus: (req: any, res: Response, next: import("express").NextFunction) => void;
 export declare const getStatusHistory: (req: any, res: Response, next: import("express").NextFunction) => void;
 export declare const sendCommand: (req: any, res: Response, next: import("express").NextFunction) => void;

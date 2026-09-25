@@ -72,14 +72,79 @@ model Device {
   orgs            Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assignedToId    String?
   assignedTo      User?         @relation("UserDevices", fields: [assignedToId], references: [id], onDelete: SetNull)
+  loadBalanceMethod String      @default("src-mac") // port-channel load-balance method
+  // CLI ref: "Configuring LACP System Priority" — 1-65535, default 32768. Global: affects all
+  // aggregation groups on the device.
+  lacpSystemPriority Int        @default(32768)
+  // CLI ref: "Configuring the External Powersupply" — total PoE power budget in watts. Null
+  // means unset/default (device computes it from port count × 15.4W).
+  poePowerBudget    Float?
+  // CLI ref: "Enabling Powersupply Legacy Mode" — doc warns this can damage a connected device
+  // if enabled on a port not attached to a PD, so writes to this are confirm-gated.
+  // AC5 only — global; TR does per-port legacy mode instead (see Port.poeLegacyMode).
+  poeLegacyMode     Boolean       @default(false)
+  // Global, TR models only — confirmed live: "poe power-alarm VALUE (50 to 99 percent)" /
+  // "poe power-reserved VALUE (0 to 50 percent)". Null powerAlarmPercent = "None" (disabled).
+  poePowerAlarmPercent    Int?
+  poePowerReservedPercent Int           @default(0)
 
-  telemetry     Telemetry[]
-  vlans         Vlan[]
-  ports         Port[]
-  events        DeviceEvent[]
-  statusHistory DeviceStatus[]
-  commandLogs   CommandLog[]
-  alarms        Alarm[]
+  // ─── System ──────────────────────────────────────────────────────────────
+  // CLI ref: "System Hostname Configuration" — max 63 bytes
+  hostname            String?
+  // CLI ref: "Setting Ntp Server" — IPv4 only, domain names not supported
+  ntpServer           String?
+  // CLI ref: "Setting Timezone" — default UTC
+  timezone            String?
+  // CLI ref: "Enable WEB Server" — null means disabled (the doc's default)
+  webServerMode       String? // "all" | "http" | "https" | null
+  telnetServerEnabled Boolean @default(false)
+  sshServerEnabled    Boolean @default(false)
+  // CLI ref: "Configuring Management IP" — VLANID + IPADDR/MASKLEN + gateway in one flat
+  // command. Changing this can disconnect the platform from the switch, so writes are
+  // confirm-gated (see systemController.ts) and were NOT live-tested against this device's
+  // real management path for that reason.
+  managementVlanId    Int?
+  managementIpMode    String? // "static" | "dhcp"
+  managementIp        String?
+  managementGateway    String?
+  // IPv6 counterpart of the fields above — independent, parallel CLI section (see
+  // commands/system/types.ts). Same VLAN, separate address/mode.
+  managementIpv6Mode    String? // "static" | "dhcp"
+  managementIpv6        String?
+  managementIpv6Gateway String?
+  // Tracks whether `write` has been run since the last config change made through this
+  // platform — configuration is lost on reboot without it (CLI ref: "Backup Configuration").
+  configSaved         Boolean @default(true)
+
+  // ─── Loop-Detect (TR models only — see commands/loopDetect) ────────────────
+  loopDetectEnabled         Boolean @default(false)
+  loopDetectInterval        Int     @default(5) // seconds, 5-300
+  loopDetectTrapEnabled     Boolean @default(false)
+  errdisableTimeoutEnabled  Boolean @default(false)
+  errdisableTimeoutInterval Int     @default(300) // seconds, 10-1000000
+
+  // ─── STP (TR models only — see commands/stp) — MVP scope: mode/enable/priority/timers ───
+  stpMode         String  @default("rstp") // "stp" | "rstp" | "mstp"
+  stpEnabled      Boolean @default(false)
+  stpPriority     Int     @default(32768) // 0-61440
+  stpHelloTime    Int     @default(2) // seconds, 1-10
+  stpForwardDelay Int     @default(15) // seconds, 4-30
+  stpMaxAge       Int     @default(20) // seconds, 6-40
+
+  telemetry        Telemetry[]
+  vlans            Vlan[]
+  ports            Port[]
+  routeConfigs     RouteConfig[]
+  portSecurityMacs PortSecurityMac[]
+  dhcpPools        DhcpPool[]
+  linkAggregations LinkAggregation[]
+  l3Interfaces     L3Interface[]
+  events           DeviceEvent[]
+  statusHistory    DeviceStatus[]
+  commandLogs      CommandLog[]
+  alarms           Alarm[]
+  macEntries       MacEntry[]
+  neighbors        Neighbor[]
 
   createdAt DateTime @default(now())
   updateAt  DateTime @updatedAt
@@ -199,14 +264,153 @@ model Port {
   id          String   @id @default(cuid())
   name        String // interface identifier, e.g. "gigabitEthernet0/1"
   description String?
-  portType    String   @default("access") // "access" | "trunk"
-  vlanId      Int      @default(1) // access vlan, or native vlan when trunk
+  portType    String   @default("access") // "access" | "trunk" | "hybrid"
+  vlanId      Int      @default(1) // access vlan / trunk native vlan / hybrid PVID, depending on portType
+  // CLI ref: "switchport trunk allowed vlan {all|VLAN_LIST|none}" — "all" | "none" | a VLAN_LIST
+  trunkAllowedVlan   String @default("all")
+  // CLI ref: "switchport hybrid allowed vlan {all|VLAN_LIST|none}"
+  hybridAllowedVlan  String @default("all")
+  // CLI ref: "switchport hybrid untagged vlan VLAN_LIST" — empty by default (doc: "by default the untagged VLAN list is empty")
+  hybridUntaggedVlan String @default("")
+  adminStatus String   @default("up") // "up" | "down" — desired admin state (shutdown / no shutdown)
+  speed       String   @default("auto") // "auto" | "10" | "100" | "1000"
+  duplex      String   @default("auto") // "auto" | "full" | "half"
+  flowControl String   @default("off") // "on" | "off"
+  mtu         Int      @default(1500) // 46-10222
+  medium      String   @default("copper") // "copper" | "fiber"
+  sfpMode     String? // "sgmii" | "2500BASE-X" | "1000BASE-X" | "10G" — SFP ports only
+  autoneg     String   @default("on") // "on" | "off" — 1000M optical ports only per CLI reference
+  // CLI ref: "Configuring LACP Interface Priority" — 1-65535, default 32768
+  lacpPortPriority Int @default(32768)
+  // CLI ref: "Configuring LACP Timeout Mode" — "long" | "short", default "long"
+  lacpTimeout      String @default("long")
+  // CLI ref: "Enabling Port Powersupply" — default port power supply enabled.
+  poeEnabled       Boolean @default(true)
+  // Per-port PoE, TR models only — confirmed live against a real TR-MS2910-P terminal
+  // (see commands/poe/tr.ts). Legacy mode is GLOBAL on AC5 (Device.poeLegacyMode) but
+  // PER-PORT on TR — confirmed: TR's global `poe ?` doesn't list "legacy" at all, it only
+  // appears under `interface ... poe ?`.
+  poePriority      String   @default("low") // "low" | "medium" | "high"
+  // True max depends on the port's PoE standard (1-30 for .3at, 1-90 for .3bt) — the switch
+  // enforces this itself; we validate the wider 1-90 bound only.
+  poeMaxPower      Int?
+  poeForceOn       Boolean  @default(false) // "poe force on" — reverse form ("no poe force") assumed, not seen live
+  poeLegacyMode    Boolean  @default(false)
+  poePdDescription String? // "poe pd-description" — separate from the port's own `description`
+  // "poe pd-detect mode {by-flow|by-ping IPADDR}" — confirmed live. by-ping requires the peer
+  // IP; null = detection disabled ("no poe pd-detect mode", assumed).
+  poePdDetectMode     String? // "by-flow" | "by-ping"
+  poePdDetectPeerIp   String? // only used when mode = "by-ping"
+  // "poe pd-detect parameter interval VALUE times VALUE" — one command sets both together
+  // (confirmed live), so these are always written as a pair. interval: 5-60s, times: 3-30.
+  poePdDetectInterval Int?
+  poePdDetectTimes    Int?
+
+  // "switchport port-security" (TR only) — confirmed live. Individually-configured secure MAC
+  // entries live in the separate PortSecurityMac model below.
+  portSecurityEnabled       Boolean @default(false)
+  portSecurityAgingStatic   Boolean @default(false)
+  portSecurityAgingTime     Int? // minutes, 0-1440
+  portSecurityStickyMac     Boolean @default(false) // "mac-address sticky" — auto-learns secure MACs
+  portSecurityMaximum       Int? // 1-1024
+  portSecurityViolationMode String? // "restrict" | "shutdown"
+  // Loop-Detect, TR models only (see commands/loopDetect/types.ts) — global capability check
+  // gates whether these are ever pushed; AC5 doesn't implement this feature at all.
+  loopDetectEnabled Boolean @default(false)
+  loopDetectAction  String  @default("alarm") // "alarm" | "error-down"
+  loopDetectVlans   String? // e.g. "10-12,20" — VLAN domain(s) to detect within; null = ignore VLAN
+  // STP, TR models only (see commands/stp/types.ts) — same capability gating as loop-detect.
+  stpPriority  Int     @default(128) // 0-240
+  stpPathCost  Int? // 1-200000000; null = device default
+  stpEdgePort  String? // "edgeport" | "autoedge" | null
+  stpBpduGuard Boolean @default(false)
+  // True once the switch has accepted the most recently applied config for this port.
+  // Defaults false so rows written before this field existed (DB-only stub era) correctly
+  // read as "not confirmed on device" rather than silently appearing applied.
+  deviceConfirmed Boolean @default(false)
   deviceId    String
   device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updateAt    DateTime @updatedAt
 
   @@unique([deviceId, name])
+}
+
+// Port Channel Configuration (Link Aggregation). Member-port assignment IS pushed to the
+// switch, one "channel-group ID mode X" command per port via the Pre-command interface-context
+// mechanism (see commands/deviceCommands.ts). memberPorts only ever holds ports the switch has
+// actually confirmed; deviceConfirmed is false when the group is only partially applied (some
+// requested ports were rejected — see linkAggregationController.ts).
+model LinkAggregation {
+  id          String   @id @default(cuid())
+  deviceId    String
+  device      Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  groupId     Int // aggregation group / channel ID, 1-12
+  mode        String   @default("static") // "static" | "active" | "passive" (LACP active/passive)
+  memberPorts String[] // confirmed member port names
+  deviceConfirmed Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updateAt    DateTime @updatedAt
+
+  @@unique([deviceId, groupId])
+}
+
+model RouteConfig {
+  id                       String   @id @default(cuid())
+  deviceId                 String
+  device                   Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  isDefaultRoute           Boolean  @default(false)
+  destIpSegment            String
+  destIpMask               String
+  interfaceType            String   @default("null0 interface")
+  forwardingRoutingAddress String?
+  distanceMetric           Int? // 1-255
+  routingTag               String? // 1-4294967295, stored as string (exceeds Int4 range)
+  description              String?
+  createdAt                DateTime @default(now())
+  updateAt                 DateTime @updatedAt
+}
+
+model DhcpPool {
+  id              String   @id @default(cuid())
+  deviceId        String
+  device          Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  poolName        String
+  network         String
+  netmask         String
+  gateway         String
+  leasePeriod     String   @default("forever") // "forever" | "custom"
+  leaseDays       Int?
+  leaseHours      Int?
+  leaseMinutes    Int?
+  dns             String
+  backupDns       String?
+  option43        String?
+  addressSegments Json     @default("[]") // [{ start: string, end: string }]
+  status          String   @default("enabled") // "enabled" | "disabled"
+  nakStatus       String   @default("disabled") // "enabled" | "disabled"
+  createdAt       DateTime @default(now())
+  updateAt        DateTime @updatedAt
+
+  @@unique([deviceId, network, netmask])
+}
+
+// "switchport port-security mac-address" (TR only) — confirmed live. A distinct list of
+// individually-configured secure MAC addresses per port, separate from Port.portSecurityStickyMac
+// (which just toggles global auto-learn on the port). Each entry is either a plain static MAC
+// ("switchport port-security mac-address XXXX.XXXX.XXXX") or one pre-seeded via the "sticky"
+// keyword ("switchport port-security mac-address sticky XXXX.XXXX.XXXX") — see
+// commands/portSecurity/tr.ts.
+model PortSecurityMac {
+  id         String   @id @default(cuid())
+  deviceId   String
+  device     Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  port       String
+  macAddress String
+  sticky     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([deviceId, port, macAddress])
 }
 
 // Alarms (event-driven and threshold-driven)
@@ -228,6 +432,33 @@ model Alarm {
   updateAt       DateTime  @updatedAt
 }
 
+// Layer 3 interface addressing — SVI (VLAN interface) or a routed physical port ("no
+// switchport" first). CLI ref: "Configuring SVI Port IP/IPv6 Address" and "Configuring Routing
+// Port IP/IPv6 Address". Setting the primary address can replace the device's management IP
+// (the CLI doc explicitly warns of this for SVIs), so every write here is gated behind an
+// explicit confirm flag at the controller level — see l3InterfaceController.ts.
+model L3Interface {
+  id            String   @id @default(cuid())
+  deviceId      String
+  device        Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  interfaceKind String // "svi" | "routedPort"
+  interfaceName String // "vlan15" or "gigabitEthernet0/6" — display/lookup key
+  vlanId        Int? // set when interfaceKind = "svi"
+  port          String? // set when interfaceKind = "routedPort"
+  ipv4Address   String? // primary, e.g. "192.168.1.1/24"
+  ipv6Address   String? // primary, e.g. "2001:db8::1/64"
+  // Always empty today — secondary-address support was pulled after live testing showed
+  // re-running "ip address" replaces the primary rather than adding a secondary (no documented
+  // "secondary" keyword exists). Kept for when the real syntax is confirmed.
+  secondaryIpv4 String[] @default([])
+  secondaryIpv6 String[] @default([])
+  deviceConfirmed Boolean @default(false)
+  createdAt     DateTime @default(now())
+  updateAt      DateTime @updatedAt
+
+  @@unique([deviceId, interfaceName])
+}
+
 model audit {
   id          String   @id @default(cuid())
   action      String
@@ -237,4 +468,47 @@ model audit {
   timestamp   DateTime @default(now())
   createdAt   DateTime @default(now())
   updateAt    DateTime @updatedAt
+}
+
+// ─── Topology ───────────────────────────────────────────────────────────────
+// Snapshot of `show mac-address-table` per switch, refreshed by services/topology/
+// topologyPoller.ts (read-only "show" command — never touches config). Which MAC was learned
+// on which port is what lets the topology draw end devices / upstream clouds / other switches
+// behind each port. `mac` is normalized to lower-case "aabb.ccdd.eeff" (switch's own format).
+model MacEntry {
+  id        String   @id @default(cuid())
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  port      String // "gigabitEthernet0/6"
+  mac       String // "5ccc.ff1b.3401"
+  vlanId    Int
+  type      String   @default("dynamic") // "dynamic" | "static"
+  // Switch-reported learn time ("2026-09-18 14:41:10"), kept as the switch prints it.
+  learnedAt String?
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @default(now())
+
+  @@unique([deviceId, port, mac, vlanId])
+  @@index([deviceId, port])
+}
+
+// LLDP neighbour per local port (`show lldp ... neighbor`). Schema is in place now so the
+// switch-to-switch link code has somewhere to land; the poller only fills it once LLDP output
+// has been confirmed against a real second switch (none available as of 2026-09-18).
+model Neighbor {
+  id               String   @id @default(cuid())
+  deviceId         String
+  device           Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  localPort        String
+  remoteChassisId  String? // usually the neighbour's system MAC
+  remoteSystemName String?
+  remotePort       String?
+  remoteMgmtIp     String?
+  remoteDescription String?
+  // Set when remoteChassisId / remoteMgmtIp matches a Device we manage.
+  remoteDeviceId   String?
+  firstSeen        DateTime @default(now())
+  lastSeen         DateTime @default(now())
+
+  @@unique([deviceId, localPort])
 }

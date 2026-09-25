@@ -16,22 +16,32 @@ const deviceWhereForUser = (req: newReq) => {
   return {};
 };
 
-// GET /api/v1/alarm?status=active&severity=critical&limit=50
+// GET /api/v1/alarm?status=active&severity=critical&limit=50&page=1
 export const getAllAlarms = asyncHandlers(async (req: newReq, res: Response) => {
   const { status, severity } = req.query as { status?: string; severity?: string };
   const limit = Number(req.query.limit) || 50;
+  const page = Math.max(1, Number(req.query.page) || 1);
 
-  const alarms = await prisma.alarm.findMany({
-    where: {
-      device: deviceWhereForUser(req),
-      ...(status ? { status } : {}),
-      ...(severity ? { severity } : {}),
-    },
-    include: { device: { select: { id: true, name: true, serialNumber: true } } },
-    orderBy: { triggeredAt: "desc" },
-    take: limit,
-  });
-  return res.status(200).json(new ApiResponse(200, { alarms }, "Alarms fetched"));
+  const where = {
+    device: deviceWhereForUser(req),
+    ...(status ? { status } : {}),
+    ...(severity ? { severity } : {}),
+  };
+
+  const [alarms, total] = await Promise.all([
+    prisma.alarm.findMany({
+      where,
+      include: { device: { select: { id: true, name: true, serialNumber: true } } },
+      orderBy: { triggeredAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.alarm.count({ where }),
+  ]);
+
+  return res.status(200).json(
+    new ApiResponse(200, { alarms, total, page, totalPages: Math.max(1, Math.ceil(total / limit)) }, "Alarms fetched")
+  );
 });
 
 // GET /api/v1/alarm/summary — counts for dashboard cards

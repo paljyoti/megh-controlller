@@ -7,12 +7,23 @@ import userRoutes from "./routes/userRoutes.js";
 import deviceRoutes from "./routes/deviceRoutes.js";
 import vlanRoutes from "./routes/vlanRoutes.js";
 import portRoutes from "./routes/portRoutes.js";
+import routeConfigRoutes from "./routes/routeConfigRoutes.js";
+import portSecurityMacRoutes from "./routes/portSecurityMacRoutes.js";
+import dhcpRoutes from "./routes/dhcpRoutes.js";
+import linkAggregationRoutes from "./routes/linkAggregationRoutes.js";
+import l3InterfaceRoutes from "./routes/l3InterfaceRoutes.js";
+import poeRoutes from "./routes/poeRoutes.js";
+import systemRoutes from "./routes/systemRoutes.js";
+import loopDetectRoutes from "./routes/loopDetectRoutes.js";
+import stpRoutes from "./routes/stpRoutes.js";
 import orgsRoutes from "./routes/orgsRoutes.js";
 import deptsRoutes from "./routes/departmentRoutes.js";
 import alarmRoutes from "./routes/alarmRoutes.js";
+import topologyRoutes from "./routes/topologyRoutes.js";
 import { verifyUser } from "./middlewares/authMiddleware.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import startMQTT from "./services/mqttService.js";
+import { startTopologyPoller } from "./services/topology/topologyPoller.js";
 
 dotenv.config();
 const app = express();
@@ -51,7 +62,17 @@ app.use("/api/v1/dept", deptsRoutes);
 app.use("/api/v1/device", deviceRoutes);   // ← mounted (was missing before)
 app.use("/api/v1/device/:id/vlan", vlanRoutes);
 app.use("/api/v1/device/:id/ports", portRoutes);
+app.use("/api/v1/device/:id/route-config", routeConfigRoutes);
+app.use("/api/v1/device/:id/port-security-macs", portSecurityMacRoutes);
+app.use("/api/v1/device/:id/dhcp-pool", dhcpRoutes);
+app.use("/api/v1/device/:id/link-aggregation", linkAggregationRoutes);
+app.use("/api/v1/device/:id/l3-interfaces", l3InterfaceRoutes);
+app.use("/api/v1/device/:id/poe", poeRoutes);
+app.use("/api/v1/device/:id/system", systemRoutes);
+app.use("/api/v1/device/:id/loop-detect", loopDetectRoutes);
+app.use("/api/v1/device/:id/stp", stpRoutes);
 app.use("/api/v1/alarm", alarmRoutes);
+app.use("/api/v1/topology", topologyRoutes);
 
 // Must be registered after all routes — Express only treats a 4-arg middleware as an
 // error handler when it comes last in the chain.
@@ -59,6 +80,8 @@ app.use(errorHandler);
 
 // ─── Start MQTT Service ───────────────────────────────────────────────────────
 startMQTT();
+// Read-only MAC-table discovery for the Topology page (see services/topology/topologyPoller.ts).
+startTopologyPoller();
 
 const PORT = process.env.PORT || 8082;
 
