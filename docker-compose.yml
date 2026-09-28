@@ -37,7 +37,7 @@ services:
     networks:
       - techroute-network
 
-    opensearch:
+  opensearch:
     image: opensearchproject/opensearch:3
     container_name: techroute-opensearch
     restart: unless-stopped
@@ -67,11 +67,7 @@ services:
       - "9200:9200"
 
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl --cacert /usr/share/opensearch/config/root-ca.pem -fs https://localhost:9200 >/dev/null || exit 1"
-        ]
+      test: ["CMD-SHELL", "curl -k -s -o /dev/null https://localhost:9200 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -92,7 +88,7 @@ services:
     environment:
       PORT: "8082"
       DATABASE_URL: "postgresql://techroute_user:changeme123@postgres:5432/techroute_db?schema=public"
-      CLIENT_URLS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://172.16.0.63:3000"
+      CLIENT_URLS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://172.16.0.63:3000,http://megh.techroutes.com:6544,http://122.160.82.93:6544,http://megh.techroutes.com:3000,http://122.160.82.93:6544"
       ACCESS_TOKEN_SECRET: "accesssecret123"
       REFRESH_TOKEN_SECRET: "refreshsecret123"
       MQTT_BROKER_URL: "mqtts://megh.techroutes.com:6545"
@@ -129,7 +125,8 @@ services:
       - "3000:80"
 
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]      interval: 30s
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 30s
       timeout: 5s
       retries: 3
 
