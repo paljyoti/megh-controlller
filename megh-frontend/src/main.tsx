@@ -10,7 +10,9 @@ import Users from "./pages/Users";
 import OrganizationDetails from "./pages/OrganizationDetails";
 import Login from "./pages/Login";
 import SwitchDetails from "./pages/SwitchDetails";
+import Alarms from "./pages/Alarms";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import Topology from "./pages/Topology";
 import { ThemeProvider } from "./context/ThemeContext";
 
 import {
@@ -36,10 +38,10 @@ const router = createBrowserRouter([
       { path: "devices", element: <Devices /> },
       { path: "devices/:switchId", element: <SwitchDetails /> },
       { path: "users", element: <Users /> },
-      { path: "topology", element: <PlaceholderPage title="Topology" /> },
+      { path: "topology", element: <Topology /> },
       { path: "monitoring/performance", element: <PlaceholderPage title="Performance Monitoring" /> },
       { path: "monitoring/traffic", element: <PlaceholderPage title="Traffic Monitoring" /> },
-      { path: "alarms/active", element: <PlaceholderPage title="Active Alarms" /> },
+      { path: "alarms/active", element: <Alarms /> },
       { path: "alarms/history", element: <PlaceholderPage title="Alarm History" /> },
     ],
   },

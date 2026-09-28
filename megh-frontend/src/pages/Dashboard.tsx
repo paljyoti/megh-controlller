@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import { Server, Building2, Activity, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 import StatCard from "../component/StatCard";
@@ -40,23 +41,17 @@ interface AlarmSummary {
   total: number;
 }
 
+// Real telemetry-derived point (see api.getNetworkOverview) — hourly Mbps averages over the
+// last 24h, only for hours with actual data.
+interface TrafficPoint {
+  time: string;
+  download: number;
+  upload: number;
+}
+
 const sparkOrgs = [{ v: 1 }, { v: 1 }, { v: 2 }, { v: 2 }, { v: 3 }, { v: 3 }, { v: 3 }];
 const sparkTotal = [{ v: 100 }, { v: 110 }, { v: 105 }, { v: 115 }, { v: 120 }, { v: 118 }, { v: 128 }];
 const sparkStatus = [{ v: 90 }, { v: 92 }, { v: 88 }, { v: 95 }, { v: 91 }, { v: 93 }, { v: 91 }];
-
-const trafficData = [
-  { time: "12:00", download: 800, upload: 300 },
-  { time: "14:00", download: 950, upload: 400 },
-  { time: "16:00", download: 1100, upload: 350 },
-  { time: "18:00", download: 1300, upload: 500 },
-  { time: "20:00", download: 900, upload: 450 },
-  { time: "22:00", download: 700, upload: 250 },
-  { time: "00:00", download: 500, upload: 200 },
-  { time: "02:00", download: 400, upload: 150 },
-  { time: "04:00", download: 450, upload: 180 },
-  { time: "06:00", download: 600, upload: 220 },
-  { time: "08:00", download: 850, upload: 350 },
-];
 
 const HEALTH_COLORS = ["#22c55e", "#ef4444"];
 
@@ -68,10 +63,12 @@ const severityDot: Record<string, string> = {
 
 const Dashboard = () => {
   // const user = getUser();
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const [devices, setDevices] = useState<Device[]>([]);
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const [alarmSummary, setAlarmSummary] = useState<AlarmSummary | null>(null);
+  const [trafficData, setTrafficData] = useState<TrafficPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,6 +78,7 @@ const Dashboard = () => {
         .getAllAlarms({ limit: 10})
         .then((res) => setAlarms(res.data.data.alarms)),
       api.getAlarmSummary().then((res) => setAlarmSummary(res.data.data)),
+      api.getNetworkOverview().then((res) => setTrafficData(res.data.data.overview)),
     ])
       .catch((err) => console.error("Dashboard data fetch failed:", err))
       .finally(() => setLoading(false));
@@ -160,8 +158,8 @@ const Dashboard = () => {
         />
         <StatCard
           title="Total Alarms"
-          value={alarmSummary?.active ?? 0}
-          subtitle={`${alarmSummary?.critical ?? 0} critical, ${alarmSummary?.warning ?? 0} warning`}
+          value={alarmSummary?.total ?? 0}
+          subtitle={`${alarmSummary?.active ?? 0} active (${alarmSummary?.critical ?? 0} critical, ${alarmSummary?.warning ?? 0} warning)`}
           icon={<Bell size={20} />}
           color="amber"
         />
@@ -182,6 +180,11 @@ const Dashboard = () => {
             </select>
           </div>
           <div className="h-36">
+            {trafficData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-gray-400 dark:text-gray-500">
+                No traffic data yet — waiting for more telemetry
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trafficData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                 <defs>
@@ -203,6 +206,7 @@ const Dashboard = () => {
                 <Area type="monotone" dataKey="upload" stroke="#22c55e" fill="url(#uploadGrad)" strokeWidth={1.5} dot={false} name="Upload" />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -252,7 +256,10 @@ const Dashboard = () => {
           <h2 className="font-semibold text-gray-800 dark:text-gray-100">
             Recent Alarms
           </h2>
-          <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+          <button
+            onClick={() => navigate("/alarms/active")}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
             View All
           </button>
         </div>

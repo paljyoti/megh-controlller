@@ -37,7 +37,7 @@ services:
     networks:
       - techroute-network
 
-  opensearch:
+    opensearch:
     image: opensearchproject/opensearch:3
     container_name: techroute-opensearch
     restart: unless-stopped
@@ -46,7 +46,6 @@ services:
       discovery.type: single-node
       bootstrap.memory_lock: "true"
       OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
-      DISABLE_SECURITY_PLUGIN: "true"
 
     ulimits:
       memlock:
@@ -56,14 +55,26 @@ services:
     volumes:
       - opensearch-data:/usr/share/opensearch/data
 
+      # OpenSearch configuration
+      - ./opensearch/config/opensearch.yml:/usr/share/opensearch/config/opensearch.yml:ro
+
+      # TLS certificates
+      - ./opensearch/certs/root-ca.pem:/usr/share/opensearch/config/root-ca.pem:ro
+      - ./opensearch/certs/node.pem:/usr/share/opensearch/config/node.pem:ro
+      - ./opensearch/certs/node-key.pem:/usr/share/opensearch/config/node-key.pem:ro
+
     ports:
       - "9200:9200"
 
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:9200 >/dev/null || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl --cacert /usr/share/opensearch/config/root-ca.pem -fs https://localhost:9200 >/dev/null || exit 1"
+        ]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 10
 
     networks:
       - techroute-network
@@ -84,7 +95,7 @@ services:
       CLIENT_URLS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://172.16.0.63:3000"
       ACCESS_TOKEN_SECRET: "accesssecret123"
       REFRESH_TOKEN_SECRET: "refreshsecret123"
-      MQTT_BROKER_URL: "mqtts://mosquitto:8883"
+      MQTT_BROKER_URL: "mqtts://megh.techroutes.com:6545"
 
     depends_on:
       postgres:
@@ -111,6 +122,8 @@ services:
     container_name: techroute-frontend
 
     restart: unless-stopped
+    environment:
+      - VITE_API_BASE_URL="http://megh.techroutes.com:6544"
 
 
 
@@ -118,8 +131,7 @@ services:
       - "3000:80"
 
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null || exit 1"]
-      interval: 30s
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]      interval: 30s
       timeout: 5s
       retries: 3
 

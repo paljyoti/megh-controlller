@@ -33,6 +33,7 @@ const SwitchDetails = () => {
   const [statusData, setStatusData] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [command, setCommand] = useState("");
+  const [commandMode, setCommandMode] = useState<"exec" | "config">("exec");
   const [commandResult, setCommandResult] = useState("");
 
   useEffect(() => {
@@ -70,11 +71,12 @@ const SwitchDetails = () => {
   const handleSendCommand = async () => {
     if (!switchId || !command.trim()) return;
     try {
-      const res = await api.sendCommand(switchId, command.trim());
+      const res = await api.sendCommand(switchId, command.trim(), commandMode);
       setCommandResult(`Command sent. Request ID: ${res.data.data.requestId}`);
       setCommand("");
-    } catch {
-      setCommandResult("Failed to send command");
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setCommandResult(message || "Failed to send command");
     }
   };
 
@@ -129,7 +131,11 @@ const SwitchDetails = () => {
       </div>
 
       {/* Detail Tabs: Device info / Port info / Mac Address Table / Protocal Status / Device Log / Configuration */}
-      <SwitchDetailTabs telemetry={telemetry} deviceId={switchId} />
+      <SwitchDetailTabs
+        telemetry={telemetry}
+        deviceId={switchId}
+        uptimeSeconds={statusData?.latestRecord?.uptime ? parseInt(statusData.latestRecord.uptime) : undefined}
+      />
 
       {/* Command Section - only for ADMIN/SUPERADMIN */}
       {canSendCommands() && (
@@ -140,6 +146,15 @@ const SwitchDetails = () => {
               Send Command
             </h2>
             <div className="flex gap-3">
+              <select
+                value={commandMode}
+                onChange={(e) => setCommandMode(e.target.value as "exec" | "config")}
+                title="exec: show/diagnostic commands. config: commands that change running-config."
+                className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="exec">Exec</option>
+                <option value="config">Config</option>
+              </select>
               <input
                 type="text"
                 value={command}

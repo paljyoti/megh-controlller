@@ -22,9 +22,11 @@ const DETAIL_TABS: { key: DetailTabKey; label: string }[] = [
 const SwitchDetailTabs = ({
   telemetry,
   deviceId,
+  uptimeSeconds,
 }: {
   telemetry: TelemetryData | null;
   deviceId?: string;
+  uptimeSeconds?: number;
 }) => {
   const [activeTab, setActiveTab] = useState<DetailTabKey>("device");
 
@@ -49,10 +51,12 @@ const SwitchDetailTabs = ({
 
       <div className="mt-4">
         {activeTab === "device" && <DeviceInfoTab telemetry={telemetry} />}
-        {activeTab === "port" && <PortInfoTab telemetry={telemetry} />}
-        {activeTab === "mac" && <MacAddressTableTab />}
+        {activeTab === "port" && (
+          <PortInfoTab telemetry={telemetry} deviceId={deviceId} uptimeSeconds={uptimeSeconds} />
+        )}
+        {activeTab === "mac" && <MacAddressTableTab deviceId={deviceId} />}
         {activeTab === "protocol" && <ProtocolStatusTab />}
-        {activeTab === "log" && <DeviceLogTab />}
+        {activeTab === "log" && <DeviceLogTab deviceId={deviceId} />}
         {activeTab === "configuration" && <ConfigurationTab deviceId={deviceId} />}
       </div>
     </div>

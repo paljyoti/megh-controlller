@@ -3,6 +3,8 @@ import { Laptop, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api, getUser, canOnboard } from "../services/api";
 import AssignModal from "../component/AssignModal";
+import ExportButton from "../component/ExportButton";
+import type { ExportColumn } from "../utils/export";
 
 interface Device {
   id: string;
@@ -86,6 +88,22 @@ const DevicesPage: React.FC = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
+  // Export always covers filteredDevices (every page matching the current search/status
+  // filter), not just paginatedDevices — otherwise the export would silently miss rows.
+  const exportColumns: ExportColumn<Device>[] = [
+    { header: "Device", accessor: (d) => d.name || d.serialNumber },
+    { header: "Serial Number", accessor: (d) => d.serialNumber },
+    { header: "IP", accessor: (d) => d.ipAddress || "-" },
+    { header: "Model", accessor: (d) => d.model || "-" },
+    { header: "MAC Address", accessor: (d) => d.macAddress || "-" },
+    { header: "Firmware version", accessor: (d) => d.softwareVersion || "-" },
+    ...(user?.role !== "USER"
+      ? [{ header: "Organization", accessor: (d: Device) => d.orgs?.name || "-" }]
+      : []),
+    { header: "Assigned To", accessor: (d) => d.assignedTo?.name || "-" },
+    { header: "Status", accessor: (d) => d.status },
+  ];
+
   const handleAssigned = () => {
     fetchDevices();
     fetchOnboard();
@@ -133,6 +151,12 @@ const DevicesPage: React.FC = () => {
               <option>Online</option>
               <option>Offline</option>
             </select>
+            <ExportButton
+              filename="device-inventory"
+              title="Device Inventory Report"
+              columns={exportColumns}
+              rows={filteredDevices}
+            />
           </div>
         )}
       </div>
@@ -175,12 +199,8 @@ const DevicesPage: React.FC = () => {
                   <th className="px-6 py-3 text-left">Serial Number</th>
                   <th className="px-6 py-3 text-left">IP</th>
                   <th className="px-6 py-3 text-left">Model</th>
-                   <th className="px-6 py-3 text-left">MAC Address</th>
-                     <th className="px-6 py-3 text-left">Last Checkin</th>
-                      <th className="px-6 py-3 text-left">Uptime</th>
-                       <th className="px-6 py-3 text-left">CPU Load</th>
-                        <th className="px-6 py-3 text-left">Firmware version</th>
-                         <th className="px-6 py-3 text-left">Upload</th>
+                  <th className="px-6 py-3 text-left">MAC Address</th>
+                  <th className="px-6 py-3 text-left">Firmware version</th>
                   {user?.role !== "USER" && (
                     <th className="px-6 py-3 text-left">Organization</th>
                   )}
@@ -191,7 +211,7 @@ const DevicesPage: React.FC = () => {
               <tbody className="divide-y">
                 {paginatedDevices.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
+                    <td colSpan={user?.role !== "USER" ? 9 : 8} className="px-6 py-8 text-center text-gray-400">
                       No devices found
                     </td>
                   </tr>
@@ -208,6 +228,8 @@ const DevicesPage: React.FC = () => {
                       <td className="px-6 py-4">{device.serialNumber}</td>
                       <td className="px-6 py-4">{device.ipAddress || "-"}</td>
                       <td className="px-6 py-4">{device.model || "-"}</td>
+                      <td className="px-6 py-4">{device.macAddress || "-"}</td>
+                      <td className="px-6 py-4">{device.softwareVersion || "-"}</td>
                       {user?.role !== "USER" && (
                         <td className="px-6 py-4">
                           {device.orgs?.name || "-"}

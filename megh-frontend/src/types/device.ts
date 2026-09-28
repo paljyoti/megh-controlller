@@ -21,6 +21,8 @@ export interface TelemetryData {
     macAddress: string | null;
     rxBytes: string;
     txBytes: string;
+    rxPackets: string;
+    txPackets: string;
   }[];
 }
 

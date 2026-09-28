@@ -1,0 +1,621 @@
+<title>Megh Controller Architecture</title>
+<style>
+  :root {
+    --bg: #f5f6f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f5;
+    --border: #dfe3ea;
+    --text: #1a2233;
+    --text-muted: #5b6472;
+    --text-faint: #8892a0;
+    --accent: #2f56d6;
+    --accent-soft: #e8edfc;
+    --good: #1c7a4a;
+    --good-soft: #e4f5ea;
+    --warn: #9a6300;
+    --warn-soft: #fbf0d9;
+    --code-bg: #f0f2f7;
+    --code-border: #dde1ea;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1420;
+      --surface: #151d2c;
+      --surface-2: #1b2434;
+      --border: #2a3448;
+      --text: #e7eaf2;
+      --text-muted: #a2acc0;
+      --text-faint: #6f7990;
+      --accent: #7897ff;
+      --accent-soft: #202c4c;
+      --good: #4fd394;
+      --good-soft: #16291f;
+      --warn: #f0b849;
+      --warn-soft: #2e2510;
+      --code-bg: #101724;
+      --code-border: #263045;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1420;
+    --surface: #151d2c;
+    --surface-2: #1b2434;
+    --border: #2a3448;
+    --text: #e7eaf2;
+    --text-muted: #a2acc0;
+    --text-faint: #6f7990;
+    --accent: #7897ff;
+    --accent-soft: #202c4c;
+    --good: #4fd394;
+    --good-soft: #16291f;
+    --warn: #f0b849;
+    --warn-soft: #2e2510;
+    --code-bg: #101724;
+    --code-border: #263045;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.6;
+    padding-inline: 16px;
+  }
+  h1, h2, h3 {
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-weight: 600;
+    text-wrap: balance;
+    color: var(--text);
+  }
+  code, .mono, .stat-num, table { font-variant-numeric: tabular-nums; }
+  code, pre, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+
+  .wrap { max-width: 1240px; margin: 0 auto; padding-block: 32px 80px; }
+
+  /* Hero */
+  .hero {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 28px;
+    margin-bottom: 28px;
+  }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 10px;
+  }
+  .hero h1 { font-size: clamp(28px, 4vw, 40px); margin: 0 0 10px; }
+  .hero p.lede {
+    color: var(--text-muted);
+    font-size: 16px;
+    max-width: 68ch;
+    margin: 0 0 22px;
+  }
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .stat-num {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-label {
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 40px;
+    align-items: start;
+  }
+  @media (max-width: 780px) {
+    .layout { grid-template-columns: 1fr; }
+    .toc { position: static !important; }
+  }
+
+  .toc {
+    position: sticky;
+    top: calc(env(safe-area-inset-top, 0px) + 20px);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13.5px;
+    border-left: 2px solid var(--border);
+    padding-left: 14px;
+  }
+  .toc a {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 5px 0;
+  }
+  .toc a:hover { color: var(--accent); }
+  .toc .toc-h2 { font-weight: 600; color: var(--text); margin-top: 10px; }
+  .toc .toc-h2:first-child { margin-top: 0; }
+
+  main { min-width: 0; }
+  section { margin-bottom: 44px; scroll-margin-top: 16px; }
+  section > h2 {
+    font-size: 22px;
+    margin: 0 0 6px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  section h3 { font-size: 16.5px; margin: 22px 0 8px; }
+  .section-kicker {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    margin: 0 0 20px;
+  }
+  p { max-width: 72ch; color: var(--text); }
+  p.muted { color: var(--text-muted); }
+  ul, ol { max-width: 70ch; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  strong { color: var(--text); }
+
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.88em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  pre code { background: none; border: none; padding: 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .table-wrap { overflow-x: auto; border-radius: 10px; }
+  th, td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    background: var(--surface-2);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  tr:last-child td { border-bottom: none; }
+  td .mono { font-size: 12.5px; color: var(--text-muted); }
+
+  .callout {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout.good { border-left-color: var(--good); background: var(--good-soft); }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .callout p { margin: 0; max-width: none; }
+  .callout .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    color: var(--accent);
+  }
+  .callout.good .tag { color: var(--good); }
+  .callout.warn .tag { color: var(--warn); }
+
+  .pill {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 100px;
+  }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+
+  .mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  footer.doc-footer {
+    border-top: 1px solid var(--border);
+    margin-top: 50px;
+    padding-top: 18px;
+    font-size: 12.5px;
+    color: var(--text-faint);
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<div class="wrap">
+
+  <div class="hero">
+    <p class="eyebrow">Architecture Analysis · Verified Against Source</p>
+    <h1>Megh Controller</h1>
+    <p class="lede">
+      An enterprise network switch management platform — device onboarding, live configuration,
+      telemetry, alarming, and topology, driven over MQTT. This document was produced by reading
+      the actual repository (controllers, schema, MQTT handlers, Docker config), not from a
+      description of it — every claim below is traceable to a specific file.
+    </p>
+    <div class="stat-row">
+      <div class="stat"><span class="stat-num">1</span><span class="stat-label">backend process (monolith)</span></div>
+      <div class="stat"><span class="stat-num">21</span><span class="stat-label">Postgres models</span></div>
+      <div class="stat"><span class="stat-num">16</span><span class="stat-label">vendor-command modules</span></div>
+      <div class="stat"><span class="stat-num">3</span><span class="stat-label">RBAC roles</span></div>
+      <div class="stat"><span class="stat-num">5</span><span class="stat-label">MQTT topic types</span></div>
+      <div class="stat"><span class="stat-num">5</span><span class="stat-label">docker-compose services</span></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <nav class="toc">
+      <div class="toc-h2">Contents</div>
+      <a href="#overview">System overview</a>
+      <a href="#backend">Backend: monolith, not microservices</a>
+      <a href="#mqtt">Device communication (MQTT)</a>
+      <a href="#commands">Multi-vendor command layer</a>
+      <a href="#data">Data layer</a>
+      <a href="#auth">Auth &amp; RBAC</a>
+      <a href="#frontend">Frontend</a>
+      <a href="#deploy">Deployment</a>
+      <a href="#gaps">Dormant &amp; unverified pieces</a>
+      <a href="#stack">Tech stack</a>
+    </nav>
+
+    <main>
+
+      <section id="overview">
+        <h2>System overview</h2>
+        <p class="section-kicker">backend/src/index.ts · docker-compose.yml</p>
+        <p>
+          One React single-page app talks to one Express API over HTTPS. That API is the single
+          point of contact for both the browser and the switches — it terminates a TLS MQTT
+          connection to a Mosquitto broker, and every switch on the network publishes to and
+          subscribes from that same broker. Postgres holds all state; OpenSearch is provisioned
+          alongside it but is not wired into anything yet (see <a href="#gaps">Dormant pieces</a>).
+        </p>
+        <pre class="mermaid">
+flowchart LR
+  FE["React SPA<br/>Vite + Router v7"]
+  subgraph BE["Backend — single Express process, :8082"]
+    API["REST API<br/>18 route files"]
+    MQTTC["MQTT client<br/>(singleton, mTLS)"]
+    POLL["Topology poller<br/>setInterval, 5 min"]
+  end
+  DB[("PostgreSQL<br/>21 models")]
+  BROKER[["Mosquitto<br/>MQTT broker"]]
+  SW["Network switches"]
+  OS[("OpenSearch<br/>provisioned, unused")]
+
+  FE -- "HTTPS / JSON" --> API
+  API --> DB
+  MQTTC --> DB
+  POLL -. "drives" .-> MQTTC
+  API <--> MQTTC
+  MQTTC == "mTLS" ==> BROKER
+  BROKER == "mTLS" ==> SW
+  BE -. "client exists, never called" .-> OS
+        </pre>
+        <p class="muted">
+          Solid arrows are live data paths confirmed in code; the dotted line to OpenSearch marks
+          infrastructure that's provisioned but has zero call sites.
+        </p>
+      </section>
+
+      <section id="backend">
+        <h2>Backend: a monolith, not microservices</h2>
+        <p class="section-kicker">backend/src/controllers/*.ts (24 files) · backend/src/services/*.ts</p>
+        <p>
+          Every piece of business logic — auth, device CRUD, VLAN, PoE, routing, port security,
+          alarms, telemetry ingestion, topology — runs inside <strong>one Node process</strong>
+          started by <code>index.ts</code>. There are no independently deployable services, no
+          internal service-to-service API, no message queue between components. This is a
+          reasonable, well-organized architecture for the project's size — it just isn't
+          microservices, regardless of how the containers in <code>docker-compose.yml</code> are
+          described.
+        </p>
+        <div class="callout warn">
+          <span class="tag">Scaling constraint</span>
+          <p>
+            The command/response correlation layer (<code>commandWaiter.ts</code>) is an
+            in-process <code>EventEmitter</code>, and the topology poller is an in-process
+            <code>setInterval</code>. Neither survives being split across replicas: if you ran two
+            copies of this backend behind a load balancer, an HTTP request handled by replica A
+            waiting on a switch's MQTT reply would never be notified if that reply happened to
+            land on replica B's socket. Horizontal scaling isn't safe today without moving that
+            correlation into shared state (Redis pub/sub, for example) first.
+          </p>
+        </div>
+        <h3>Controller inventory</h3>
+        <div class="table-wrap">
+        <table>
+          <tr><th>Domain</th><th>Controllers</th></tr>
+          <tr><td>Identity</td><td><span class="mono">UserController, organisationController, departmentController</span></td></tr>
+          <tr><td>Device core</td><td><span class="mono">deviceController, vlanController, portController, routeConfigController, dhcpController, l3InterfaceController, linkAggregationController</span></td></tr>
+          <tr><td>Switch features</td><td><span class="mono">poeController, portSecurityController, loopDetectController, stpController, systemController</span></td></tr>
+          <tr><td>Observability</td><td><span class="mono">alarmController, networkOverviewController, topologyController</span></td></tr>
+          <tr><td>Legacy / unused</td><td><span class="mono">dashboardController</span> — see <a href="#gaps">Dormant pieces</a></td></tr>
+        </table>
+        </div>
+      </section>
+
+      <section id="mqtt">
+        <h2>Device communication (MQTT)</h2>
+        <p class="section-kicker">backend/src/services/mqttService.ts · deviceCommand.ts · commandWaiter.ts</p>
+        <p>
+          Switches and the platform speak over five topic types, all under a per-serial-number
+          namespace parsed by <code>topicParser.ts</code>:
+        </p>
+        <div class="table-wrap">
+        <table>
+          <tr><th>Topic</th><th>Direction</th><th>Purpose</th></tr>
+          <tr><td><span class="mono">switch/&lt;sn&gt;/first_seen</span></td><td>Switch → Platform</td><td>Zero-touch onboarding — auto-creates the <code>Device</code> row, unassigned until an admin claims it</td></tr>
+          <tr><td><span class="mono">switch/&lt;sn&gt;/telemetry</span></td><td>Switch → Platform</td><td>CPU/memory/temperature + per-interface byte/packet counters, ~every 5 min</td></tr>
+          <tr><td><span class="mono">switch/&lt;sn&gt;/event</span></td><td>Switch → Platform</td><td>Async notifications — <span class="mono">port_up</span>, <span class="mono">port_down</span>, etc.</td></tr>
+          <tr><td><span class="mono">switch/&lt;sn&gt;/status</span></td><td>Switch → Platform</td><td>online/offline/rebooting — offline also arrives via MQTT LWT</td></tr>
+          <tr><td><span class="mono">switch/&lt;sn&gt;/response</span></td><td>Switch → Platform</td><td>Reply to a command, correlated by <span class="mono">request_id</span></td></tr>
+          <tr><td><span class="mono">switch/&lt;sn&gt;/request</span></td><td>Platform → Switch</td><td>Config/exec command, published by every feature controller</td></tr>
+        </table>
+        </div>
+        <h3>Request/response over pub-sub</h3>
+        <p>
+          MQTT has no native request/response — the platform builds one on top. Every command gets
+          a generated <code>request_id</code> (<code>req_&lt;12 hex&gt;</code>), is logged to
+          <code>CommandLog</code> before it's sent, and — when the caller needs to know the
+          outcome before answering its own HTTP request — the handler blocks on a Promise that
+          only resolves when a matching response lands, or after a 15s timeout.
+        </p>
+        <pre class="mermaid">
+sequenceDiagram
+  participant U as Operator
+  participant API as Express handler
+  participant W as commandWaiter (EventEmitter)
+  participant M as MQTT client
+  participant S as Switch
+
+  U->>API: POST /device/:id/vlan
+  API->>API: publishCommand() — CommandLog row created
+  API->>M: publish switch/&lt;sn&gt;/request { request_id }
+  API->>W: waitForResponse(request_id, 15s)
+  M->>S: forwarded by broker
+  S-->>M: switch/&lt;sn&gt;/response { request_id, status }
+  M->>API: responseHandler updates CommandLog
+  API->>W: notifyResponse(request_id, data)
+  W-->>API: Promise resolves
+  API-->>U: 200 confirmed / 422 rejected by switch
+        </pre>
+        <div class="callout good">
+          <span class="tag">Confirm-then-persist</span>
+          <p>
+            Nothing is written to the database as "applied" until the switch's own response says
+            <code>status: 0</code>. A rejected command is reported back with the switch's own
+            message — the platform never assumes a config change succeeded.
+          </p>
+        </div>
+      </section>
+
+      <section id="commands">
+        <h2>Multi-vendor command layer</h2>
+        <p class="section-kicker">backend/src/commands/ — 16 feature modules</p>
+        <p>
+          Every switch-facing feature (VLAN, PoE, port security, STP, DHCP, routing, link
+          aggregation, loop detection, system, topology…) is split into a
+          <code>types.ts</code> (the method contract), one file per switch family
+          (<code>ac5.ts</code>, <code>tr.ts</code>), and an <code>index.ts</code> barrel.
+          <code>registry.ts</code> is the only place that maps a <code>Device.model</code> string
+          to a concrete set of builders — controllers never branch on model name directly, they
+          call <code>getDeviceCommands(model)</code> / <code>getDeviceCapabilities(model)</code>
+          and the right vendor's CLI strings come back.
+        </p>
+        <pre><code>// controllers never see a vendor string — only this:
+const commands = getDeviceCommands(device.model);
+if (!commands.portSecurity.bindStaticMac) return 400; // not supported on this model
+await runDeviceCommand(device, commands.portSecurity.bindStaticMac(target, mac, sticky));</code></pre>
+        <p class="muted">
+          Adding a third switch family means adding new files under <code>commands/</code> —
+          zero controller changes. CLI strings in this layer are only ever written after being
+          confirmed against a real terminal <code>?</code> session, never guessed.
+        </p>
+      </section>
+
+      <section id="data">
+        <h2>Data layer</h2>
+        <p class="section-kicker">backend/prisma/schema.prisma — 21 models, PostgreSQL 15</p>
+        <div class="table-wrap">
+        <table>
+          <tr><th>Group</th><th>Models</th></tr>
+          <tr><td>Identity &amp; access</td><td><span class="mono">Organization, Department, User</span></td></tr>
+          <tr><td>Device core</td><td><span class="mono">Device, Vlan, Port, LinkAggregation, RouteConfig, DhcpPool, L3Interface, PortSecurityMac</span></td></tr>
+          <tr><td>Telemetry &amp; ops</td><td><span class="mono">Telemetry, InterfaceStat, DeviceEvent, DeviceStatus, CommandLog, Master, Alarm</span></td></tr>
+          <tr><td>Topology</td><td><span class="mono">MacEntry, Neighbor</span></td></tr>
+          <tr><td>Unused</td><td><span class="mono">audit</span> — see <a href="#gaps">Dormant pieces</a></td></tr>
+        </table>
+        </div>
+        <p>
+          Most per-feature config (PoE, STP, loop detection, port security) is columns directly
+          on <code>Port</code> rather than separate tables — a pragmatic choice that keeps
+          per-port reads to one query, at the cost of a wide table.
+        </p>
+      </section>
+
+      <section id="auth">
+        <h2>Authentication &amp; RBAC</h2>
+        <p class="section-kicker">backend/src/middlewares/authMiddleware.ts</p>
+        <p>
+          JWT access + refresh tokens (<code>bcrypt</code>-hashed passwords, cost 10), accepted
+          either as an <code>accessToken</code> cookie or a <code>Bearer</code> header.
+          <code>verifyUser</code> decodes the token, loads the user fresh from Postgres on every
+          request (not just trusting the JWT payload), and attaches it to <code>req.user</code>.
+          <code>requireRole(...roles)</code> gates individual routes.
+        </p>
+        <div class="table-wrap">
+        <table>
+          <tr><th>Role</th><th>Device visibility</th></tr>
+          <tr><td><span class="pill good">SUPERADMIN</span></td><td>Every device, unrestricted</td></tr>
+          <tr><td><span class="pill good">ADMIN</span></td><td>Devices in their own organization only</td></tr>
+          <tr><td><span class="pill good">USER</span></td><td>Devices explicitly assigned to them only</td></tr>
+        </table>
+        </div>
+        <p class="muted">
+          The same three-tier scoping rule (<code>deviceWhereForUser</code>-style helper) is
+          re-implemented locally in most controllers rather than imported from one shared module —
+          consistent in behavior everywhere it's used, but duplicated rather than centralized.
+        </p>
+      </section>
+
+      <section id="frontend">
+        <h2>Frontend</h2>
+        <p class="section-kicker">megh-frontend/src — React 19, Vite 7, React Router 7</p>
+        <p>
+          A conventional page/component SPA: <code>main.tsx</code> defines the route tree,
+          <code>App.tsx</code> is the authenticated shell (header + sidebar + outlet), and
+          per-domain pages live under <code>pages/</code> with feature-specific config panels
+          under <code>component/config/</code>. Auth gating is a <code>localStorage</code> flag
+          check, not client-side JWT validation — the API is the real gate.
+        </p>
+        <ul>
+          <li><strong>Charts</strong> — Recharts (dashboard stat trends, port traffic)</li>
+          <li><strong>Topology</strong> — <code>@xyflow/react</code> + <code>dagre</code> for auto-layout graph rendering</li>
+          <li><strong>Export</strong> — <code>xlsx</code> / <code>jspdf</code>, dynamically imported so they don't bloat the main bundle until a user actually exports</li>
+        </ul>
+      </section>
+
+      <section id="deploy">
+        <h2>Deployment</h2>
+        <p class="section-kicker">docker-compose.yml · backend/Dockerfile · megh-frontend/Dockerfile</p>
+        <div class="table-wrap">
+        <table>
+          <tr><th>Service</th><th>Image</th><th>Role</th></tr>
+          <tr><td><span class="mono">postgres</span></td><td>postgres:15-alpine</td><td>Primary datastore</td></tr>
+          <tr><td><span class="mono">mosquitto</span></td><td>eclipse-mosquitto:2.0</td><td>MQTT broker, mTLS on :8883</td></tr>
+          <tr><td><span class="mono">opensearch</span></td><td>opensearchproject/opensearch:3</td><td>Provisioned, unused (see below)</td></tr>
+          <tr><td><span class="mono">backend</span></td><td>built, multi-stage</td><td>Express API on :8082</td></tr>
+          <tr><td><span class="mono">frontend</span></td><td>built, served by nginx</td><td>Static SPA on :80 → host :3000</td></tr>
+        </table>
+        </div>
+        <p>
+          The backend image's entrypoint runs migrations and seeds on every container start:
+        </p>
+        <pre><code>npx prisma migrate deploy && npx prisma db seed && node dist/index.js</code></pre>
+        <p class="muted">
+          The seed script upserts a single <span class="mono">admin@megh.com</span> SUPERADMIN
+          (password hashed at seed time) and is a no-op on repeat runs — it won't overwrite an
+          existing password.
+        </p>
+      </section>
+
+      <section id="gaps">
+        <h2>Dormant &amp; unverified pieces</h2>
+        <p class="section-kicker">Honest findings — provisioned but not load-bearing</p>
+        <p>
+          Three things exist in the repo or the deploy config but have no live call path today:
+        </p>
+        <div class="callout warn">
+          <span class="tag">OpenSearch</span>
+          <p>
+            A full service is provisioned in <code>docker-compose.yml</code> and a client is
+            instantiated in <code>db/openSearchClient.ts</code> — but it is never imported
+            anywhere else. Running, but doing nothing.
+          </p>
+        </div>
+        <div class="callout warn">
+          <span class="tag">audit model</span>
+          <p>
+            The <code>audit</code> Prisma model (action/performedBy/entity) exists but no
+            controller ever writes to it — there's no audit trail today despite the schema
+            being ready for one.
+          </p>
+        </div>
+        <div class="callout warn">
+          <span class="tag">dashboardController.getAllSwitches</span>
+          <p>
+            Still routed at <span class="mono">/dashboard/get-all-switch-list</span>, still
+            serving hardcoded seed data (<code>seed/data.ts</code>'s <code>mockSwitches</code>),
+            unauthenticated. The real dashboard (<code>Dashboard.tsx</code>) doesn't call it —
+            it's dead weight, not a security hole in practice, but worth removing.
+          </p>
+        </div>
+      </section>
+
+      <section id="stack">
+        <h2>Tech stack</h2>
+        <div class="grid-2">
+          <div class="table-wrap">
+          <table>
+            <tr><th colspan="2">Backend</th></tr>
+            <tr><td>Runtime</td><td class="mono">Node 20, Express 5</td></tr>
+            <tr><td>Language</td><td class="mono">TypeScript 5.9</td></tr>
+            <tr><td>ORM</td><td class="mono">Prisma 6.15</td></tr>
+            <tr><td>Auth</td><td class="mono">jsonwebtoken, bcrypt</td></tr>
+            <tr><td>Device transport</td><td class="mono">mqtt 5.15 (mTLS)</td></tr>
+            <tr><td>Validation</td><td class="mono">zod</td></tr>
+          </table>
+          </div>
+          <div class="table-wrap">
+          <table>
+            <tr><th colspan="2">Frontend</th></tr>
+            <tr><td>Framework</td><td class="mono">React 19, Vite 7</td></tr>
+            <tr><td>Routing</td><td class="mono">react-router-dom 7</td></tr>
+            <tr><td>Styling</td><td class="mono">Tailwind CSS 3.4</td></tr>
+            <tr><td>Charts</td><td class="mono">recharts 3.8</td></tr>
+            <tr><td>Topology graph</td><td class="mono">@xyflow/react + dagre</td></tr>
+            <tr><td>Export</td><td class="mono">xlsx, jspdf</td></tr>
+          </table>
+          </div>
+        </div>
+      </section>
+
+      <footer class="doc-footer">
+        Compiled by tracing the actual source tree, Prisma schema, Docker configuration, and
+        MQTT handler code in this repository — not a description of it from memory.
+      </footer>
+
+    </main>
+  </div>
+</div>
