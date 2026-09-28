@@ -114,7 +114,7 @@ services:
       context: ./megh-frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: "http://megh.techroutes.com:6544"
+        VITE_API_BASE_URL: "http://122.160.82.93:6544"
 
     image: techroute-frontend:latest
     container_name: techroute-frontend
