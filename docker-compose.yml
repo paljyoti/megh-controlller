@@ -117,15 +117,13 @@ services:
     build:
       context: ./megh-frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "http://megh.techroutes.com:6544"
 
     image: techroute-frontend:latest
     container_name: techroute-frontend
 
     restart: unless-stopped
-    environment:
-      VITE_API_BASE_URL: "http://megh.techroutes.com:6544"
-
-
 
     ports:
       - "3000:80"
