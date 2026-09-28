@@ -26,7 +26,21 @@ import startMQTT from "./services/mqttService.js";
 import { startTopologyPoller } from "./services/topology/topologyPoller.js";
 dotenv.config();
 const app = express();
-const allowedOrigins = process.env.CLIENT_URLS?.split(",");
+// Hardcoded instead of read from CLIENT_URLS — a docker-compose env change only takes effect
+// after the container is recreated, which made this easy to silently leave stale. Baking the
+// list into the code means a rebuild/restart of whatever process is actually running always
+// carries the current list with it.
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://172.16.0.63:3000",
+    "http://megh.techroutes.com:6544",
+    "http://122.160.82.93:6544",
+    "http://megh.techroutes.com:3000",
+    "http://122.160.82.93:6543",
+];
 console.log("allowed url", allowedOrigins);
 app.use(cors({
     origin: function (origin, callback) {
