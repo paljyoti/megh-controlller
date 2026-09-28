@@ -88,7 +88,7 @@ services:
     environment:
       PORT: "8082"
       DATABASE_URL: "postgresql://techroute_user:changeme123@postgres:5432/techroute_db?schema=public"
-      CLIENT_URLS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://172.16.0.63:3000,http://megh.techroutes.com:6544,http://122.160.82.93:6544,http://megh.techroutes.com:3000,http://122.160.82.93:6544"
+      CLIENT_URLS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://172.16.0.63:3000,http://megh.techroutes.com:6544,http://122.160.82.93:6544,http://megh.techroutes.com:3000,http://122.160.82.93:6543"
       ACCESS_TOKEN_SECRET: "accesssecret123"
       REFRESH_TOKEN_SECRET: "refreshsecret123"
       MQTT_BROKER_URL: "mqtts://megh.techroutes.com:6545"
