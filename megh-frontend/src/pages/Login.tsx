@@ -16,6 +16,7 @@ function Login() {
     setLoading(true);
     try {
       const res = await api.login(email, password);
+      alert("Login successful!"); // Show an alert on successful login
       const { updatedUser } = res.data.data;
       const token =
         res.headers["set-cookie"]?.[0]?.match(/accessToken=([^;]+)/)?.[1] ||

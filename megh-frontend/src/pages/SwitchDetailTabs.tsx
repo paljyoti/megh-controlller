@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings } from "lucide-react";
+import { Settings, FileBarChart } from "lucide-react";
 import type { TelemetryData } from "../types/device";
 import DeviceInfoTab from "../component/DeviceInfoTab";
 import PortInfoTab from "../component/PortInfoTab";
@@ -7,8 +7,9 @@ import MacAddressTableTab from "../component/MacAddressTableTab";
 import ProtocolStatusTab from "../component/ProtocolStatusTab";
 import DeviceLogTab from "../component/DeviceLogTab";
 import ConfigurationTab from "../component/config/ConfigurationTab";
+import ReportTab from "../component/ReportTab";
 
-type DetailTabKey = "device" | "port" | "mac" | "protocol" | "log" | "configuration";
+type DetailTabKey = "device" | "port" | "mac" | "protocol" | "log" | "configuration" | "report";
 
 const DETAIL_TABS: { key: DetailTabKey; label: string }[] = [
   { key: "device", label: "Device info" },
@@ -17,6 +18,7 @@ const DETAIL_TABS: { key: DetailTabKey; label: string }[] = [
   { key: "protocol", label: "Protocal Status" },
   { key: "log", label: "Device Log" },
   { key: "configuration", label: "Configuration" },
+  { key: "report", label: "Report" },
 ];
 
 const SwitchDetailTabs = ({
@@ -44,6 +46,7 @@ const SwitchDetailTabs = ({
             }`}
           >
             {tab.key === "configuration" && <Settings size={15} />}
+            {tab.key === "report" && <FileBarChart size={15} />}
             {tab.label}
           </button>
         ))}
@@ -58,6 +61,7 @@ const SwitchDetailTabs = ({
         {activeTab === "protocol" && <ProtocolStatusTab />}
         {activeTab === "log" && <DeviceLogTab deviceId={deviceId} />}
         {activeTab === "configuration" && <ConfigurationTab deviceId={deviceId} />}
+        {activeTab === "report" && <ReportTab deviceId={deviceId} />}
       </div>
     </div>
   );

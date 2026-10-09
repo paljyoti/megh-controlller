@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { Responsive, WidthProvider, type Layout } from "react-grid-layout";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 import {
   PieChart,
   Pie,
@@ -12,11 +15,33 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Server, Building2, Activity, Bell } from "lucide-react";
+import { Server, Building2, Activity, Bell, LayoutGrid, Save, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 import StatCard from "../component/StatCard";
+
+const ResponsiveGridLayout = WidthProvider(Responsive);
+
+// Each dashboard section is one grid item. The default positions below are the Standard layout
+// (12-column grid, rowHeight 50px). A user's saved layout only overrides these positions.
+const DEFAULT_LAYOUT: Layout[] = [
+  { i: "statOrgs", x: 0, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "statDevices", x: 3, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "statStatus", x: 6, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "statAlarms", x: 9, y: 0, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: "networkOverview", x: 0, y: 2, w: 8, h: 4, minW: 3, minH: 3 },
+  { i: "deviceHealth", x: 8, y: 2, w: 4, h: 4, minW: 2, minH: 3 },
+  { i: "recentAlarms", x: 0, y: 6, w: 12, h: 8, minW: 4, minH: 4 },
+];
+
+// Saved as [{ id, layout: { x, y, w, h } }] for the logged-in user. Unknown or missing ids fall
+// back to the default position, so the Standard layout is always complete.
+const mergeSavedLayout = (saved: { id: string; layout: { x: number; y: number; w: number; h: number } }[] | null) =>
+  DEFAULT_LAYOUT.map((d) => {
+    const s = saved?.find((item) => item.id === d.i);
+    return s ? { ...d, x: s.layout.x, y: s.layout.y, w: s.layout.w, h: s.layout.h } : d;
+  });
 
 interface Device {
   id: string;
@@ -71,6 +96,24 @@ const Dashboard = () => {
   const [trafficData, setTrafficData] = useState<TrafficPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Section layout — savedLayout is the user's saved positions (or the default). draftLayout holds
+  // in-progress changes while editing, so Cancel can discard them.
+  const [savedLayout, setSavedLayout] = useState<Layout[]>(DEFAULT_LAYOUT);
+  const [draftLayout, setDraftLayout] = useState<Layout[]>(DEFAULT_LAYOUT);
+  const [layoutLoaded, setLayoutLoaded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [layoutError, setLayoutError] = useState("");
+  const [breakpoint, setBreakpoint] = useState("lg");
+
+  useEffect(() => {
+    api
+      .getDashboardLayout()
+      .then((res) => setSavedLayout(mergeSavedLayout(res.data.data.widgets)))
+      .catch(() => setSavedLayout(DEFAULT_LAYOUT))
+      .finally(() => setLayoutLoaded(true));
+  }, []);
+
   useEffect(() => {
     Promise.all([
       api.getAllDevices().then((res) => setDevices(res.data.data.devices)),
@@ -109,7 +152,7 @@ const Dashboard = () => {
   const tooltipBg = isDark ? "#1e293b" : "#ffffff";
   const tooltipBorder = isDark ? "#475569" : "#e5e7eb";
 
-  if (loading) {
+  if (loading || !layoutLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <p className="text-gray-500 dark:text-gray-400">Loading...</p>
@@ -117,8 +160,65 @@ const Dashboard = () => {
     );
   }
 
+  // Only the 12-column (lg) layout is edited and saved. Smaller screens use RGL's generated
+  // layout, so edits made there are ignored.
+  const handleLayoutChange = (newLayout: Layout[]) => {
+    if (editing && breakpoint === "lg") setDraftLayout(newLayout);
+  };
+
+  const startEditing = () => {
+    setDraftLayout(savedLayout);
+    setLayoutError("");
+    setEditing(true);
+  };
+
+  // Cancel just leaves edit mode; the grid goes back to savedLayout, so nothing changes.
+  const cancelEditing = () => {
+    setEditing(false);
+    setLayoutError("");
+  };
+
+  const handleSaveLayout = async () => {
+    setSaving(true);
+    setLayoutError("");
+    try {
+      await api.saveDashboardLayout(
+        draftLayout.map((l) => ({ id: l.i, layout: { x: l.x, y: l.y, w: l.w, h: l.h } }))
+      );
+      setSavedLayout(draftLayout);
+      setEditing(false);
+    } catch {
+      setLayoutError("Failed to save layout");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetLayout = async () => {
+    if (!confirm("Reset the dashboard layout to the default?")) return;
+    setSaving(true);
+    setLayoutError("");
+    try {
+      await api.resetDashboardLayout();
+      setSavedLayout(DEFAULT_LAYOUT);
+      setDraftLayout(DEFAULT_LAYOUT);
+      setEditing(false);
+    } catch {
+      setLayoutError("Failed to reset layout");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // In edit mode the section content ignores clicks, so "View All" and similar buttons do not fire
+  // while the user is dragging. The grid item itself still receives the drag.
+  const sectionBody = (child: React.ReactNode) => (
+    <div className={`h-full [&>div]:h-full ${editing ? "pointer-events-none cursor-move" : ""}`}>{child}</div>
+  );
+
   return (
     <div className="space-y-2">
+
       {/* Welcome
       <div>
         <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">
@@ -130,45 +230,70 @@ const Dashboard = () => {
         </p>
       </div> */}
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Organizations"
-          value={orgData.length}
-          subtitle="Registered Organizations"
-          icon={<Building2 size={20} />}
-          color="purple"
-          sparkData={sparkOrgs}
-        />
-        <StatCard
-          title="Total Devices"
-          value={totalDevices}
-          subtitle="All Registered Devices"
-          icon={<Server size={20} />}
-          color="blue"
-          sparkData={sparkTotal}
-        />
-        <StatCard
-          title="Online / Offline"
-          value={`${onlineDevices} / ${offlineDevices}`}
-          subtitle={`${onlinePct}% online`}
-          icon={<Activity size={20} />}
-          color="green"
-          sparkData={sparkStatus}
-        />
-        <StatCard
-          title="Total Alarms"
-          value={alarmSummary?.total ?? 0}
-          subtitle={`${alarmSummary?.active ?? 0} active (${alarmSummary?.critical ?? 0} critical, ${alarmSummary?.warning ?? 0} warning)`}
-          icon={<Bell size={20} />}
-          color="amber"
-        />
-      </div>
+      <ResponsiveGridLayout
+        className="layout"
+        layouts={{ lg: editing ? draftLayout : savedLayout }}
+        breakpoints={{ lg: 996, md: 768, sm: 480, xs: 0 }}
+        cols={{ lg: 12, md: 10, sm: 6, xs: 4 }}
+        rowHeight={50}
+        margin={[12, 12]}
+        isDraggable={editing}
+        isResizable={editing}
+        onLayoutChange={handleLayoutChange}
+        onBreakpointChange={setBreakpoint}
+      >
+        <div key="statOrgs">
+          {sectionBody(
+            <StatCard
+              title="Total Organizations"
+              value={orgData.length}
+              subtitle="Registered Organizations"
+              icon={<Building2 size={20} />}
+              color="purple"
+              sparkData={sparkOrgs}
+            />
+          )}
+        </div>
+        <div key="statDevices">
+          {sectionBody(
+            <StatCard
+              title="Total Devices"
+              value={totalDevices}
+              subtitle="All Registered Devices"
+              icon={<Server size={20} />}
+              color="blue"
+              sparkData={sparkTotal}
+            />
+          )}
+        </div>
+        <div key="statStatus">
+          {sectionBody(
+            <StatCard
+              title="Online / Offline"
+              value={`${onlineDevices} / ${offlineDevices}`}
+              subtitle={`${onlinePct}% online`}
+              icon={<Activity size={20} />}
+              color="green"
+              sparkData={sparkStatus}
+            />
+          )}
+        </div>
+        <div key="statAlarms">
+          {sectionBody(
+            <StatCard
+              title="Total Alarms"
+              value={alarmSummary?.total ?? 0}
+              subtitle={`${alarmSummary?.active ?? 0} active (${alarmSummary?.critical ?? 0} critical, ${alarmSummary?.warning ?? 0} warning)`}
+              icon={<Bell size={20} />}
+              color="amber"
+            />
+          )}
+        </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Network Overview */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-3 transition-colors">
+        <div key="networkOverview">
+          {sectionBody(
+        <div className="h-full bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-3 transition-colors">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-100">
               Network Overview
@@ -209,9 +334,13 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+          )}
+        </div>
 
         {/* Device Health */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-3 transition-colors">
+        <div key="deviceHealth">
+          {sectionBody(
+        <div className="h-full bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-3 transition-colors">
           <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">
             Device Health
           </h2>
@@ -248,10 +377,13 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
+          )}
+        </div>
 
-      {/* Recent Alarms */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 transition-colors">
+        {/* Recent Alarms */}
+        <div key="recentAlarms">
+          {sectionBody(
+      <div className="h-full overflow-auto bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 transition-colors">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-800 dark:text-gray-100">
             Recent Alarms
@@ -287,6 +419,49 @@ const Dashboard = () => {
             </div>
           ))}
         </div>
+      </div>
+          )}
+        </div>
+      </ResponsiveGridLayout>
+
+      {/* Floating Customize control — fixed to the top-right so it takes no space in the dashboard */}
+      <div className="fixed top-20 right-6 z-40 flex items-center gap-2">
+        {editing ? (
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full shadow-lg px-2 py-1.5">
+            {layoutError && <p className="text-red-500 text-xs px-2">{layoutError}</p>}
+            <button
+              onClick={handleResetLayout}
+              disabled={saving}
+              title="Reset to default"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-slate-700 disabled:opacity-60"
+            >
+              <RotateCcw size={14} /> Reset
+            </button>
+            <button
+              onClick={cancelEditing}
+              disabled={saving}
+              className="px-3 py-1.5 text-sm rounded-full text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveLayout}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              <Save size={14} /> {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={startEditing}
+            title="Customize dashboard"
+            aria-label="Customize dashboard"
+            className="p-3 rounded-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-lg text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+          >
+            <LayoutGrid size={18} />
+          </button>
+        )}
       </div>
     </div>
   );

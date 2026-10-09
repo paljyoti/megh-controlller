@@ -1,4 +1,4 @@
-import { Menu, User, LogOut, Sun, Moon, Bell } from "lucide-react";
+import { Menu, User, LogOut, Sun, Moon, LayoutGrid } from "lucide-react";
 import logo from "../assets/logo_blue.png";
 import { useNavigate } from "react-router-dom";
 import { api, getUser } from "../services/api";
@@ -51,12 +51,14 @@ const Header = ({ setOpen }: Props) => {
           {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
         </button>
 
-        {/* Notification Bell */}
-        <button className="relative p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
-          <Bell size={18} />
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            5
-          </span>
+        {/* Custom Dashboard — replaces the old notification bell, which had no onClick and
+            never did anything */}
+        <button
+          onClick={() => navigate("/dashboard", { state: { openCustomize: true } })}
+          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+          title="Customize Dashboard"
+        >
+          <LayoutGrid size={18} /> 
         </button>
 
         {/* Role Badge */}

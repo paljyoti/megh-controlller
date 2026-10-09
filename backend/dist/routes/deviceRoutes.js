@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getTelemetry, getEvents, getStatus, getStatusHistory, sendCommand, broadcastCommand, fileTransfer, getCommandStatus, getCommandLogs, getAllDevices, getUnassignedDevices, assignDevice, unassignDevice, } from "../controllers/deviceController.js";
+import { getDeviceReport } from "../controllers/deviceReportController.js";
 import { verifyUser, requireRole } from "../middlewares/authMiddleware.js";
 const router = Router();
 // All routes require authentication
@@ -21,5 +22,7 @@ router.post("/:id/command", requireRole("SUPERADMIN", "ADMIN"), sendCommand);
 router.post("/:id/file-transfer", requireRole("SUPERADMIN", "ADMIN"), fileTransfer);
 router.get("/:id/command/:requestId", getCommandStatus);
 router.get("/:id/command-logs", getCommandLogs);
+// Device Details → Report tab (see deviceReportController.ts)
+router.get("/:id/report", getDeviceReport);
 export default router;
 //# sourceMappingURL=deviceRoutes.js.map

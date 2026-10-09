@@ -52,6 +52,21 @@ model User {
 
   refreshToken String?
 
+  dashboardLayout DashboardLayout?
+
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+}
+
+// Per-user custom Dashboard layout (drag/drop widget arrangement). One row per user — null/
+// missing row means "no custom dashboard yet, show the Standard Dashboard". Keyed strictly by
+// the JWT-derived userId (never a client-supplied id) so users can never read/write each
+// other's layout. widgets is a JSON array of { id, type, deviceId?, layout: {x,y,w,h} }.
+model DashboardLayout {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  widgets   Json
   createdAt DateTime @default(now())
   updateAt  DateTime @updatedAt
 }

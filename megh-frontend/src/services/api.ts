@@ -54,6 +54,11 @@ export const api = {
   getDeviceStatusHistory: (id: string, limit = 50) =>
     apiClient.get(`/device/${id}/status-history`, { params: { limit } }),
 
+  // Device Details → Report tab. range: "4h" | "24h" | "7d" | "30d" | "week" | "custom".
+  // from/to (ISO strings) are only required/used when range is "custom".
+  getDeviceReport: (id: string, range: string, from?: string, to?: string) =>
+    apiClient.get(`/device/${id}/report`, { params: { range, from, to } }),
+
   // Backend requires `mode` — "exec" for show/diagnostic commands, "config" for anything that
   // changes running-config. Omitting it (the bug this fixed) always got a 400 back.
   sendCommand: (id: string, command: string, mode: "exec" | "config" = "exec", params = {}) =>
@@ -365,6 +370,15 @@ export const api = {
   // Real telemetry-derived traffic (Mbps) for the Dashboard's Network Overview chart — hourly
   // buckets over the last 24h, only for hours with actual telemetry (never fabricated).
   getNetworkOverview: () => apiClient.get("/dashboard/network-overview"),
+
+  // Custom Dashboard — per-user widget layout, keyed server-side by the JWT-derived user id.
+  // widgets is null when the user has never created a custom dashboard (show the Standard one).
+  getDashboardLayout: () => apiClient.get("/dashboard/layout"),
+
+  saveDashboardLayout: (widgets: unknown[]) =>
+    apiClient.put("/dashboard/layout", { widgets }),
+
+  resetDashboardLayout: () => apiClient.delete("/dashboard/layout"),
 
   getDeviceAlarms: (id: string, limit = 50) =>
     apiClient.get(`/alarm/device/${id}`, { params: { limit } }),
