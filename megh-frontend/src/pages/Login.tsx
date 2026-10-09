@@ -20,13 +20,19 @@ function Login() {
       const { updatedUser } = res.data.data;
       console.log("Updated User:", updatedUser); // Log the updated user object
       alert(`Welcome, ${updatedUser.name}!`); // Show an alert with the user's name
-      const token =
-        res.headers["set-cookie"]?.[0]?.match(/accessToken=([^;]+)/)?.[1] ||
-        res.data.data.accessToken;
-      if (token) localStorage.setItem("accessToken", token);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      localStorage.setItem("isLoggedIn", "true");
-      navigate("/dashboard");
+     
+
+const token = res.data.data.accessToken;
+
+if (token) {
+  localStorage.setItem("accessToken", token);
+}
+
+localStorage.setItem("user", JSON.stringify(updatedUser));
+localStorage.setItem("isLoggedIn", "true");
+
+navigate("/dashboard", { replace: true });
+
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       setError(axiosErr.response?.data?.message || "Login failed");
