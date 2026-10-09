@@ -16,8 +16,10 @@ function Login() {
     setLoading(true);
     try {
       const res = await api.login(email, password);
-      alert("Login successful!"); // Show an alert on successful login
+      // alert("Login successful!"); // Show an a  ert on successful login
       const { updatedUser } = res.data.data;
+      console.log("Updated User:", updatedUser); // Log the updated user object
+      alert(`Welcome, ${updatedUser.name}!`); // Show an alert with the user's name
       const token =
         res.headers["set-cookie"]?.[0]?.match(/accessToken=([^;]+)/)?.[1] ||
         res.data.data.accessToken;
