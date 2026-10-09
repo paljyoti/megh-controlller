@@ -17,22 +17,13 @@ function Login() {
     try {
       const res = await api.login(email, password);
       // alert("Login successful!"); // Show an a  ert on successful login
-      const { updatedUser } = res.data.data;
+      const { updatedUser, accessToken } = res.data.data;
       console.log("Updated User:", updatedUser); // Log the updated user object
       alert(`Welcome, ${updatedUser.name}!`); // Show an alert with the user's name
-     
-
-const token = res.data.data.accessToken;
-
-if (token) {
-  localStorage.setItem("accessToken", token);
-}
-
-localStorage.setItem("user", JSON.stringify(updatedUser));
-localStorage.setItem("isLoggedIn", "true");
-
-navigate("/dashboard", { replace: true });
-
+      if (accessToken) localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      localStorage.setItem("isLoggedIn", "true");
+      navigate("/dashboard");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       setError(axiosErr.response?.data?.message || "Login failed");
