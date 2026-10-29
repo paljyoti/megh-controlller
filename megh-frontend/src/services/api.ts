@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_BASE_URL ??
   `http://${window.location.hostname}:8082`;
  // `http://122.160.82.93:8082`; // ← for local dev with backend running in Docker on the host, not inside the frontend container
 const apiClient = axios.create({

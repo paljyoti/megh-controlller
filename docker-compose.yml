@@ -41,6 +41,7 @@ services:
     image: opensearchproject/opensearch:3
     container_name: techroute-opensearch
     restart: unless-stopped
+    profiles: ["search"]
 
     environment:
       discovery.type: single-node
@@ -96,8 +97,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      opensearch:
-        condition: service_healthy
       mosquitto:
         condition: service_started
 
@@ -114,7 +113,7 @@ services:
       context: ./megh-frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: "http://122.160.82.93:6544"
+        VITE_API_BASE_URL: ""   # empty = same-origin; browser calls /api/v1, frontend nginx proxies to backend:8082
 
     image: techroute-frontend:latest
     container_name: techroute-frontend
