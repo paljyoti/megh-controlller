@@ -110,10 +110,10 @@ const DevicesPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 min-h-screen space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-3 sm:p-4 md:p-6 min-h-screen space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+          <h1 className="text-xl md:text-2xl font-semibold flex items-center gap-2 text-gray-800 dark:text-gray-100">
             <Laptop size={24} /> Devices
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -122,8 +122,8 @@ const DevicesPage: React.FC = () => {
         </div>
 
         {activeTab === "devices" && (
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
               <Search
                 size={16}
                 className="absolute left-3 top-2.5 text-gray-400"
@@ -136,27 +136,29 @@ const DevicesPage: React.FC = () => {
                   setSearch(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="pl-9 pr-3 py-2 w-48 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="pl-9 pr-3 py-2 w-full sm:w-48 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="border rounded-lg px-3 py-2 text-sm"
-            >
-              <option>All</option>
-              <option>Online</option>
-              <option>Offline</option>
-            </select>
-            <ExportButton
-              filename="device-inventory"
-              title="Device Inventory Report"
-              columns={exportColumns}
-              rows={filteredDevices}
-            />
+            <div className="flex items-center gap-3">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="border rounded-lg px-3 py-2 text-sm"
+              >
+                <option>All</option>
+                <option>Online</option>
+                <option>Offline</option>
+              </select>
+              <ExportButton
+                filename="device-inventory"
+                title="Device Inventory Report"
+                columns={exportColumns}
+                rows={filteredDevices}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -255,7 +257,7 @@ const DevicesPage: React.FC = () => {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               {[...Array(totalPages)].map((_, index) => (
                 <button
                   key={index}

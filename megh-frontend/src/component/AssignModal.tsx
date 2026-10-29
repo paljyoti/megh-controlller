@@ -72,7 +72,7 @@ const AssignModal: React.FC<AssignModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg dark:shadow-slate-900/50 w-full max-w-md p-6 border border-gray-200 dark:border-slate-700">
         <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
           Assign Device: {device.name || device.serialNumber}

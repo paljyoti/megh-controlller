@@ -465,7 +465,7 @@ function AddVlanModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg dark:shadow-slate-900/50 w-full max-w-sm p-6 border border-gray-200 dark:border-slate-700">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Add VLAN</h2>
@@ -560,7 +560,7 @@ function EditVlanModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg dark:shadow-slate-900/50 w-full max-w-sm p-6 border border-gray-200 dark:border-slate-700">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
@@ -680,7 +680,7 @@ function EditPortModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg dark:shadow-slate-900/50 w-full max-w-sm p-6 border border-gray-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
