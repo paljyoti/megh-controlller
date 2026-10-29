@@ -14,6 +14,12 @@ const STATUS_STROKE: Record<TopologyEdge["status"], string> = {
   unknown: "#9ca3af",
 };
 
+// A MAC-table link into a "cloud" node is an inferred upstream aggregate, not a confirmed
+// point-to-point connection (see topologyGraph.ts — switch-to-switch links are LLDP-only now).
+// Styled as a fixed dashed grey, independent of per-port status, to read as distinct from an
+// LLDP-confirmed link at a glance — matches the Legend entries in Topology.tsx.
+const UNCONFIRMED_STROKE = "#9ca3af";
+
 // 1.5px idle → 5px at ~10 MB/s so busy links stand out without needing a legend.
 const widthFor = (rx: number | null, tx: number | null) => {
   const total = (rx ?? 0) + (tx ?? 0);
@@ -43,7 +49,8 @@ const LinkEdge = ({
   });
   if (!data) return <BaseEdge id={id} path={edgePath} />;
 
-  const stroke = STATUS_STROKE[data.status];
+  const isUnconfirmedUpstream = data.via === "mac" && data.targetType === "cloud";
+  const stroke = isUnconfirmedUpstream ? UNCONFIRMED_STROKE : STATUS_STROKE[data.status];
   const width = widthFor(data.rxBps, data.txBps);
 
   return (
@@ -55,7 +62,7 @@ const LinkEdge = ({
           stroke,
           strokeWidth: hover ? width + 1.5 : width,
           opacity: data.dimmed ? 0.15 : 1,
-          strokeDasharray: data.status === "down" ? "6 4" : undefined,
+          strokeDasharray: isUnconfirmedUpstream ? "6 4" : data.status === "down" ? "6 4" : undefined,
           transition: "stroke-width 120ms",
         }}
       />
@@ -108,6 +115,7 @@ const LinkEdge = ({
               <span className="text-gray-400">·</span>
               <span className="text-gray-500 dark:text-gray-400">
                 via {data.via === "lldp" ? "LLDP" : "MAC table"}
+                {isUnconfirmedUpstream && " (unconfirmed)"}
               </span>
             </div>
             <div className="flex items-center gap-4 mt-1 text-gray-600 dark:text-gray-300">

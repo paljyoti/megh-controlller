@@ -507,9 +507,9 @@ model MacEntry {
   @@index([deviceId, port])
 }
 
-// LLDP neighbour per local port (`show lldp ... neighbor`). Schema is in place now so the
-// switch-to-switch link code has somewhere to land; the poller only fills it once LLDP output
-// has been confirmed against a real second switch (none available as of 2026-09-18).
+// LLDP neighbour per local port, from "show lldp neighbors" — confirmed live 2026-10-15
+// (real second-switch output, see conversation). Populated by
+// services/topology/topologyPoller.ts#refreshDeviceLldpNeighbors.
 model Neighbor {
   id               String   @id @default(cuid())
   deviceId         String
@@ -522,6 +522,9 @@ model Neighbor {
   remoteDescription String?
   // Set when remoteChassisId / remoteMgmtIp matches a Device we manage.
   remoteDeviceId   String?
+  // Neighbour's own advertised LLDP TTL (seconds) from its most recent report — lets the
+  // poller size a per-neighbour stale grace period instead of one fixed constant for everyone.
+  ttlSeconds       Int?
   firstSeen        DateTime @default(now())
   lastSeen         DateTime @default(now())
 

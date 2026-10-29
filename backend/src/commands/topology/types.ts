@@ -8,8 +8,8 @@ export interface TopologyCommandBuilder {
   //   VLAN  MAC Address      Type     Ports                 FWD  Time
   //   1     aaea.6976.77e2   dynamic  gigabitEthernet0/6    1    2026-09-18 14:41:10
   showMacTable: () => CommandSpec;
-  // CLI ref (TR guide §14 LLDP): "show lldp interface <port> neighbor" is documented per
-  // interface; a no-argument form is NOT confirmed. Not used by the poller until output has
-  // been seen from a real neighbour.
-  showLldpNeighbor: (port: string) => CommandSpec;
+  // CLI ref (TR guide §14 LLDP) — "show lldp neighbors" (no argument) confirmed live
+  // 2026-10-15 against a real second switch: returns every port's neighbour in one response,
+  // so the poller never has to loop per-interface.
+  showLldpNeighbors: () => CommandSpec;
 }

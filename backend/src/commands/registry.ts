@@ -70,6 +70,8 @@ const ac5Capabilities: ModelCapabilities = {
   system: true,
   loopDetection: false,
   stp: false,
+  // AC5's CLI-MQTT doc doesn't document LLDP at all — unverified, so skipped by the poller.
+  lldp: false,
 };
 
 // TR-family switches (confirmed against the TR-S2528D-2AC configuration guide plus live
@@ -103,6 +105,8 @@ const trCapabilities: ModelCapabilities = {
   ...ac5Capabilities,
   loopDetection: true,
   stp: true,
+  // "show lldp neighbors" confirmed live against a real second switch 2026-10-15 — TR family only.
+  lldp: true,
 };
 
 // Keyed by Device.model. Add an entry here (and the matching feature-module files) when a new

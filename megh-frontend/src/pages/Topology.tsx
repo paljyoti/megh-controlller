@@ -153,6 +153,7 @@ const TopologyCanvas = () => {
             dimmed: anyMatch && !touchesHit,
             sourceLabel: nodesById.get(e.source)?.label ?? "",
             targetLabel: nodesById.get(e.target)?.label ?? "",
+            targetType: nodesById.get(e.target)?.type,
           },
           markerEnd: { type: MarkerType.Arrow, width: 12, height: 12, color: "transparent" },
         };
@@ -211,19 +212,19 @@ const TopologyCanvas = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name / IP / MAC / serial"
-              className="pl-9 pr-3 py-2 w-64 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-9 pr-3 py-2 w-64 text-sm border border-gray-300 dark:border-slate-600 rounded-full bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <button
             onClick={() => load({ relayout: true })}
-            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700"
+            className="flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-full border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
             title="Re-arrange nodes automatically"
           >
             <LayoutGrid size={15} /> Auto layout
@@ -231,7 +232,7 @@ const TopologyCanvas = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60"
+            className="flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60 transition-colors shadow-sm"
             title={canSendCommands() ? "Re-read MAC tables from switches now" : "Reload"}
           >
             <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
@@ -288,16 +289,40 @@ const TopologyCanvas = () => {
         )}
 
         {/* Legend */}
-        <div className="absolute bottom-4 left-14 flex flex-wrap items-center gap-3 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 bg-white/90 dark:bg-slate-800/90 text-[11px] text-gray-600 dark:text-gray-300">
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Online / up</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Offline / down</span>
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-[min(92%,52rem)] flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 px-4 py-2 rounded-full border border-gray-200 dark:border-slate-600 bg-white/95 dark:bg-slate-800/95 text-[11px] text-gray-600 dark:text-gray-300 shadow-sm">
+          <span className="flex items-center gap-2 text-gray-400 dark:text-gray-500 font-medium">
+            Node status
+          </span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Online</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Offline</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Rebooting</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-400" /> Unknown</span>
-          <span className="text-gray-400">· line thickness = traffic · hover a link for details</span>
+
+          <span className="border-l border-gray-200 dark:border-slate-600 pl-5 flex items-center gap-2 text-gray-400 dark:text-gray-500 font-medium">
+            Link type
+          </span>
+          <span className="flex items-center gap-1">
+            <svg width="16" height="2" className="shrink-0"><line x1="0" y1="1" x2="16" y2="1" stroke="#22c55e" strokeWidth="2" /></svg>
+            LLDP confirmed
+          </span>
+          <span className="flex items-center gap-1">
+            <svg width="16" height="2" className="shrink-0"><line x1="0" y1="1" x2="16" y2="1" stroke="#9ca3af" strokeWidth="2" strokeDasharray="4 3" /></svg>
+            Unconfirmed
+          </span>
+
+          <span className="border-l border-gray-200 dark:border-slate-600 pl-5 text-gray-400 dark:text-gray-500">
+            Line thickness = traffic · hover a link for details
+          </span>
         </div>
 
         {selected && graph && (
-          <NodePanel node={selected} edges={graph.edges} nodesById={nodesById} onClose={() => setSelectedId(null)} />
+          <NodePanel
+            key={selected.id}
+            node={selected}
+            edges={graph.edges}
+            nodesById={nodesById}
+            onClose={() => setSelectedId(null)}
+          />
         )}
       </div>
     </div>

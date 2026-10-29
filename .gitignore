@@ -1,0 +1,23 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Private keys and certificates
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Dependencies and generated files
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Project secrets
+backend/.env.prod
+backend/.env.staging
+backend/certs/*.key
+backend/certs/*.csr
+backend/certs/*.srl

@@ -8,7 +8,7 @@ import { STATUS_DOT, STATUS_RING, type FlowNode, type FlowNodeData } from "./typ
 // exports components (react-refresh rule).
 
 const shell = (d: FlowNodeData, extra = "") =>
-  `rounded-xl border-2 bg-white dark:bg-slate-800 shadow-sm transition-all ${STATUS_RING[d.status]} ${
+  `rounded-2xl border-2 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md transition-all ${STATUS_RING[d.status]} ${
     d.highlighted ? "ring-4 ring-blue-400/60 scale-105" : ""
   } ${d.dimmed ? "opacity-30" : "opacity-100"} ${extra}`;
 
@@ -55,7 +55,8 @@ export const CloudNode = ({ data }: NodeProps<FlowNode>) => (
       <div className="min-w-0">
         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{data.label}</p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400">
-          {data.macCount} devices{data.vlanId !== undefined ? ` · VLAN ${data.vlanId}` : ""}
+          {data.macCount} MAC address{data.macCount === 1 ? "" : "es"}
+          {data.vlanId !== undefined ? ` · VLAN ${data.vlanId}` : ""}
         </p>
       </div>
     </div>

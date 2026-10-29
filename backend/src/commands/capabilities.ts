@@ -13,4 +13,8 @@ export interface ModelCapabilities {
   // Not implemented for any model yet — no CLI reference found in any switch's config guide so far.
   loopDetection: boolean;
   stp: boolean;
+  // "show lldp neighbors" confirmed live only on TR so far (see commands/topology/ac5.ts) —
+  // the topology LLDP poller checks this before polling so unverified models are skipped
+  // safely instead of spamming failed commands.
+  lldp: boolean;
 }

@@ -6,15 +6,19 @@ import { macOui, macToColon, normalizeMac } from "./macTableParser.js";
   Builds the { nodes, edges } graph the Topology page renders, from data the platform
   already holds:
     - Device            → switch nodes (status, model, IP, alarm count)
-    - MacEntry          → what sits behind each port (other managed switch / upstream cloud /
-                          individual end devices)
+    - Neighbor (LLDP)   → switch-to-switch links (populated by
+                          topologyPoller.ts#refreshDeviceLldpNeighbors). This is the ONLY
+                          source for switch-to-switch edges — MAC-table inference for
+                          switch-to-switch links was removed (2026-10-15); a port with no LLDP
+                          neighbour just shows no link, it is never guessed from the MAC table.
+    - MacEntry          → end-device nodes behind a port (upstream cloud / individual hosts) —
+                          unrelated to switch-to-switch topology, kept for inventory/
+                          troubleshooting (also backs GET /topology/device/:id/mac-table).
     - Telemetry         → per-port link status + rx/tx rate (delta of the last two samples)
-    - Neighbor (LLDP)   → switch-to-switch links once populated (schema ready, poller pending)
 
-  Port classification (per switch port with learned MACs):
-    - a MAC equals another managed Device's system MAC  → "switch" link to that device
-    - ≥ CLOUD_THRESHOLD distinct MACs on the port        → one "cloud" node (upstream LAN)
-    - otherwise                                          → one "host" node per MAC (capped)
+  Port classification (per switch port, once LLDP has claimed its port — see lldpPorts below):
+    - ≥ CLOUD_THRESHOLD distinct MACs on the port  → one "cloud" node (upstream LAN)
+    - otherwise                                    → one "host" node per MAC (capped)
  */
 
 // Ports carrying this many MACs or more are treated as an uplink into a wider network — a
@@ -139,15 +143,12 @@ export const buildTopology = async (deviceWhere: Prisma.DeviceWhereInput): Promi
     nodes.push(n);
   };
 
-  // Managed switches, keyed by normalized system MAC so MAC-table rows can be matched to them.
-  const switchByMac = new Map<string, (typeof devices)[number]>();
+  // OUIs of our managed switches, so an unmanaged host sharing a vendor can be flagged
+  // (likely another switch of ours that isn't onboarded yet) — see TopologyNode.sameVendor.
   const managedOuis = new Set<string>();
   for (const d of devices) {
     const mac = d.macAddress ? normalizeMac(d.macAddress) : null;
-    if (mac) {
-      switchByMac.set(mac, d);
-      managedOuis.add(macOui(mac));
-    }
+    if (mac) managedOuis.add(macOui(mac));
     addNode({
       id: d.id,
       type: "switch",
@@ -217,34 +218,11 @@ export const buildTopology = async (deviceWhere: Prisma.DeviceWhereInput): Promi
       const distinctMacs = new Map<string, (typeof entries)[number]>();
       for (const e of entries) if (!distinctMacs.has(e.mac)) distinctMacs.set(e.mac, e);
 
-      // Managed switch behind this port?
-      let matchedSwitch = false;
-      for (const mac of distinctMacs.keys()) {
-        const other = switchByMac.get(mac);
-        if (!other || other.id === d.id) continue;
-        matchedSwitch = true;
-        const key = pairKey(d.id, other.id);
-        if (linkedPairs.has(key)) break;
-        linkedPairs.add(key);
-        // The far-end port is whichever of the other switch's ports learned OUR MAC.
-        const ourMac = d.macAddress ? normalizeMac(d.macAddress) : null;
-        const farPort = ourMac
-          ? other.macEntries.find((e) => e.mac === ourMac)?.port ?? null
-          : null;
-        edges.push({
-          id: `mac:${d.id}:${port}`,
-          source: d.id,
-          target: other.id,
-          sourcePort: port,
-          targetPort: farPort,
-          status: s.status,
-          rxBps: s.rxBps,
-          txBps: s.txBps,
-          via: "mac",
-        });
-        break;
-      }
-      if (matchedSwitch) continue;
+      // NOTE: switch-to-switch links are LLDP-only now (see lldpPorts above) — a MAC learned
+      // on this port that happens to equal another managed switch's system MAC is no longer
+      // drawn as an inferred link (that MAC-inference branch was removed). The MAC data itself
+      // is still used below for end-device (host/cloud) nodes and stays available via
+      // GET /topology/device/:id/mac-table for inventory/troubleshooting.
 
       if (distinctMacs.size >= CLOUD_THRESHOLD) {
         const id = `cloud:${d.id}:${port}`;

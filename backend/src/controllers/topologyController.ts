@@ -6,7 +6,8 @@ import ApiError from "../utils/ApiError.js";
 import { asyncHandlers } from "../utils/asyncHandler.js";
 import type { newReq } from "../schema/types.js";
 import { buildTopology } from "../services/topology/topologyGraph.js";
-import { refreshDeviceMacTable } from "../services/topology/topologyPoller.js";
+import { refreshDeviceMacTable, refreshDeviceLldpNeighbors } from "../services/topology/topologyPoller.js";
+import { getDeviceCapabilities } from "../commands/deviceCommands.js";
 import { CommandTimeoutError } from "../services/deviceCommand.js";
 import { macToColon } from "../services/topology/macTableParser.js";
 
@@ -45,15 +46,37 @@ export const refreshTopology = asyncHandlers(async (req: newReq, res: Response) 
         where: { AND: [deviceWhereForUser(req), { status: "online" }] },
       });
 
-  const results: { deviceId: string; name: string; ok: boolean; rows?: number; error?: string }[] = [];
+  const results: {
+    deviceId: string;
+    name: string;
+    ok: boolean;
+    rows?: number;
+    error?: string;
+    lldpOk?: boolean;
+    lldpRows?: number;
+    lldpError?: string;
+  }[] = [];
   for (const d of devices) {
+    const result: (typeof results)[number] = { deviceId: d.id, name: d.name, ok: false };
     try {
       const { rows } = await refreshDeviceMacTable(d);
-      results.push({ deviceId: d.id, name: d.name, ok: true, rows });
+      result.ok = true;
+      result.rows = rows;
     } catch (err) {
-      const error = err instanceof CommandTimeoutError ? "Device did not respond" : (err as Error).message;
-      results.push({ deviceId: d.id, name: d.name, ok: false, error });
+      result.error = err instanceof CommandTimeoutError ? "Device did not respond" : (err as Error).message;
     }
+
+    if (getDeviceCapabilities(d.model).lldp) {
+      try {
+        const { rows } = await refreshDeviceLldpNeighbors(d);
+        result.lldpOk = true;
+        result.lldpRows = rows;
+      } catch (err) {
+        result.lldpError = err instanceof CommandTimeoutError ? "Device did not respond" : (err as Error).message;
+      }
+    }
+
+    results.push(result);
   }
   return res.status(200).json(new ApiResponse(200, { results }, "Topology refresh completed"));
 });
