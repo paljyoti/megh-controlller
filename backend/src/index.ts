@@ -38,10 +38,8 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "http://172.16.0.63:3000",
-  "http://megh.techroutes.com:6544",
-  "http://122.160.82.93:6544",
+  "http://122.160.82.93:3000",
   "http://megh.techroutes.com:3000",
-  "http://122.160.82.93:6543",
 ];
 console.log("allowed url", allowedOrigins);
 
