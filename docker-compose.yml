@@ -32,7 +32,9 @@ services:
       - "8883:8883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./backend/certs:/mosquitto/certs:ro
+      # Broker-side certs only (ca.crt, server.crt, server.key) - kept separate from the
+      # backend's client certs below. Host path comes from .env (see .env.example).
+      - ${MQTT_BROKER_CERTS_DIR:?set MQTT_BROKER_CERTS_DIR (dir with ca.crt, server.crt, server.key)}:/mosquitto/certs:ro
       - mosquitto-data:/mosquitto/data
     networks:
       - techroute-network
@@ -93,6 +95,17 @@ services:
       ACCESS_TOKEN_SECRET: "accesssecret123"
       REFRESH_TOKEN_SECRET: "refreshsecret123"
       MQTT_BROKER_URL: "mqtts://mosquitto:8883"
+      MQTT_CERT_DIR: /run/mqtt-certs
+
+    # Backend MQTT client certs (ca.crt, client.crt, client.key only), mounted read-only at
+    # runtime - never copied into the image. Host path comes from .env (see .env.example).
+    volumes:
+      - ${MQTT_CLIENT_CERTS_DIR:?set MQTT_CLIENT_CERTS_DIR (dir with ca.crt, client.crt, client.key)}:/run/mqtt-certs:ro
+    # The container keeps its non-root `app` user (uid 100); it reads client.key through this
+    # supplementary host group instead (key: root-or-owner:<gid>, mode 0640). No gid is
+    # hardcoded here - set MQTT_CLIENT_CERTS_GID in .env (see .env.example).
+    group_add:
+      - "${MQTT_CLIENT_CERTS_GID:?set MQTT_CLIENT_CERTS_GID (numeric gid that owns client.key)}"
 
     depends_on:
       postgres:

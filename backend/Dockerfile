@@ -37,7 +37,8 @@ RUN set -eux; \
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/certs ./certs
+# MQTT client certs (ca.crt, client.crt, client.key) are NOT copied into the image; they are
+# bind-mounted read-only at runtime and located via MQTT_CERT_DIR (see docker-compose.yml).
 
 RUN chown -R app:app /app
 

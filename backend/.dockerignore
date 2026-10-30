@@ -1,7 +1,18 @@
 node_modules
 dist
-!.env.prod
-!.env.staging
+# Secrets and private keys must never enter the build context (the Dockerfile does `COPY . .`).
+# `**/` makes each pattern match at any depth, not only the context root.
+.env
+.env.*
+!.env.example
+certs
+**/certs
+**/*.key
+**/*.pem
+**/*.csr
+**/*.srl
+**/*.p12
+**/*.pfx
 .git
 .gitignore
 *.log
