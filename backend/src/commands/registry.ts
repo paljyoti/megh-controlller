@@ -109,10 +109,18 @@ const trCapabilities: ModelCapabilities = {
   lldp: true,
 };
 
+// Managed Ethernet Switch uses the AC5 command set, but its "show lldp neighbors" output is
+// parseable, so only the lldp capability is overridden.
+const managedEthernetSwitchCapabilities: ModelCapabilities = {
+  ...ac5Capabilities,
+  lldp: true,
+};
+
 // Keyed by Device.model. Add an entry here (and the matching feature-module files) when a new
 // switch model needs different CLI wording than AC5 — no controller changes required.
 const modelRegistry: Record<string, { commands: DeviceCommandSet; capabilities: ModelCapabilities }> = {
   "TR-MS2910-P": { commands: trCommands, capabilities: trCapabilities },
+  "Managed Ethernet Switch": { commands: ac5Commands, capabilities: managedEthernetSwitchCapabilities },
 };
 
 // Unrecognized/unset Device.model falls back to AC5 defaults — matches today's behavior.
